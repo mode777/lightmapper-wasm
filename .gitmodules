@@ -1,0 +1,3 @@
+[submodule "thirdparty/lightmapper"]
+	path = thirdparty/lightmapper
+	url = https://github.com/ands/lightmapper.git
