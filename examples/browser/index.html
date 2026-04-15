@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lightmapper Browser Example</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1117;
+      --panel: #161a23;
+      --text: #e4ebff;
+      --muted: #9dadcf;
+      --accent: #65d7a2;
+      --warning: #ffd36a;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, #1a2234 0%, var(--bg) 58%);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: grid;
+      place-items: center;
+    }
+
+    .layout {
+      width: min(1100px, 96vw);
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+    }
+
+    .hud {
+      background: color-mix(in srgb, var(--panel) 88%, #000 12%);
+      border: 1px solid #2a3244;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .controls {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .controls strong {
+      color: var(--text);
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(130deg, var(--accent), #88f6d0);
+      color: #0a1510;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .warning {
+      color: var(--warning);
+    }
+
+    canvas {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 10px;
+      border: 1px solid #2a3244;
+      background: #0a0d13;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="hud">
+      <label for="bounceCount" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Bounces:</strong></label>
+      <select id="bounceCount" style="background:var(--panel);color:var(--text);border:1px solid #2a3244;border-radius:6px;padding:4px 8px;font-size:0.9rem;">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+      <button id="bakeButton" type="button">Bake Lightmap</button>
+      <label for="ambientSlider" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Ambient:</strong></label>
+      <input id="ambientSlider" type="range" min="0" max="1" step="0.05" value="0.1" style="width:80px;accent-color:var(--accent);">
+      <span id="ambientValue" style="color:var(--muted);font-size:0.85rem;min-width:28px;">0.1</span>
+      <label for="lightIntensity" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Intensity:</strong></label>
+      <input id="lightIntensity" type="number" value="8" min="0.1" step="0.5" style="width:60px;background:var(--panel);color:var(--text);border:1px solid #2a3244;border-radius:6px;padding:4px 8px;font-size:0.9rem;">
+      <label for="lightColor" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Color:</strong></label>
+      <input id="lightColor" type="color" value="#ff8833" style="width:32px;height:28px;padding:0;border:1px solid #2a3244;border-radius:6px;background:var(--panel);cursor:pointer;">
+      <label for="lightX" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">X:</strong></label>
+      <input id="lightX" type="number" value="0" step="0.1" style="width:52px;background:var(--panel);color:var(--text);border:1px solid #2a3244;border-radius:6px;padding:4px 6px;font-size:0.9rem;">
+      <label for="lightY" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Y:</strong></label>
+      <input id="lightY" type="number" value="1.5" step="0.1" style="width:52px;background:var(--panel);color:var(--text);border:1px solid #2a3244;border-radius:6px;padding:4px 6px;font-size:0.9rem;">
+      <label for="lightRadius" style="color:var(--muted);font-size:0.9rem;"><strong style="color:var(--text)">Radius:</strong></label>
+      <input id="lightRadius" type="range" min="0.02" max="0.5" step="0.01" value="0.12" style="width:70px;accent-color:var(--accent);">
+      <span id="lightRadiusValue" style="color:var(--muted);font-size:0.85rem;min-width:32px;">0.12</span>
+      <button id="addLightButton" type="button">Add Light</button>
+      <div id="status" class="status">Initializing...</div>
+      <div class="controls"><strong>Controls:</strong> Mouse drag look, W/A/S/D/E/Q move, Shift speed, Space bake</div>
+    </section>
+    <canvas id="viewport" width="1024" height="768"></canvas>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
