@@ -1,6 +1,6 @@
 {
   "name": "lightmapper-wasm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Low-level JavaScript and WebAssembly wrapper for ands/lightmapper.",
   "license": "Unlicense",
   "author": "alexander.klingenbeck@gmx.de",
