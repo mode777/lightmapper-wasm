@@ -10,36 +10,35 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 
 1. [Prerequisites](#prerequisites)
 2. [Installation & Build](#installation--build)
-3. [Quick Start](#quick-start)
-4. [Module Initialization](#module-initialization)
+3. [Module Initialization](#module-initialization)
    - [`createLightmapperModule(options?)`](#createlightmappermoduleoptions)
    - [`CreateLightmapperModuleOptions`](#createlightmappermoduleoptions-1)
-5. [WebGL Context Management](#webgl-context-management)
-6. [WASM Heap Memory Helpers](#wasm-heap-memory-helpers)
+4. [WebGL Context Management](#webgl-context-management)
+5. [WASM Heap Memory Helpers](#wasm-heap-memory-helpers)
    - [Allocation](#allocation)
    - [Views (zero-copy)](#views-zero-copy)
    - [Copy helpers](#copy-helpers)
    - [Freeing memory](#freeing-memory)
-7. [Constants](#constants)
-8. [Core Lightmapping API](#core-lightmapping-api)
+6. [Constants](#constants)
+7. [Core Lightmapping API](#core-lightmapping-api)
    - [`lmCreate`](#lmcreate)
    - [`lmDestroy`](#lmdestroy)
    - [`lmSetTargetLightmap`](#lmsettargetlightmap)
    - [`lmSetGeometry`](#lmsetgeometry)
    - [`lmBegin` / `lmEnd` / `lmProgress`](#lmbegin--lmend--lmprogress)
    - [`makeBeginFrameBuffers`](#makebeginframebuffers)
-9. [Image Post-Processing](#image-post-processing)
+8. [Image Post-Processing](#image-post-processing)
    - [`lmImageMin` / `lmImageMax`](#lmimagemin--lmimagemax)
    - [`lmImageAdd` / `lmImageScale` / `lmImagePower`](#lmimageadd--lmimagescale--lmimagepower)
    - [`lmImageDilate` / `lmImageSmooth`](#lmimagedilate--lmimagesmooth)
    - [`lmImageDownsample`](#lmimagedownsample)
    - [`lmImageFtoUB`](#lmimageftub)
-10. [Validation Helpers](#validation-helpers)
-11. [Minimal Annotated Example](#minimal-annotated-example)
-12. [Multi-Bounce Global Illumination](#multi-bounce-global-illumination)
-13. [Multi-Object Scene Baking (Shared Atlas)](#multi-object-scene-baking-shared-atlas)
-14. [Quality Tips](#quality-tips)
-15. [Architecture Overview](#architecture-overview)
+9. [Validation Helpers](#validation-helpers)
+10. [Minimal Annotated Example](#minimal-annotated-example)
+11. [Multi-Bounce Global Illumination](#multi-bounce-global-illumination)
+12. [Multi-Object Scene Baking (Shared Atlas)](#multi-object-scene-baking-shared-atlas)
+13. [Quality Tips](#quality-tips)
+14. [Architecture Overview](#architecture-overview)
 
 ---
 
@@ -77,63 +76,6 @@ Build artifacts:
 Entry points:
 - **Runtime wrapper**: `src/index.js`
 - **Type definitions**: `types/index.d.ts`
-
----
-
-## Quick Start
-
-```js
-import { createLightmapperModule } from "./src/index.js";
-
-// 1. Initialize with an existing WebGL2 canvas
-const canvas = document.getElementById("viewport");
-const gl = canvas.getContext("webgl2");
-const lm = await createLightmapperModule({ canvas, webglContext: gl, autoRegisterEmscriptenContext: true });
-
-// 2. Allocate a lightmap buffer on the WASM heap
-const W = 256, H = 256, C = 4;
-const floatCount = W * H * C;
-const lightmapPtr = lm.allocF32(floatCount);
-lm.viewF32(lightmapPtr, floatCount).fill(0);           // clear to black
-
-// 3. Create a lightmapper context
-lm.makeBoundContextCurrent();
-const ctx = lm.lmCreate(64, 0.001, 100.0, 0, 0, 0, 2, 0.01, 0.0);
-
-// 4. Bind lightmap + geometry
-lm.lmSetTargetLightmap(ctx, lightmapPtr, W, H, C);
-lm.lmSetGeometry(ctx, 0,
-  lm.LM_FLOAT, verticesPtr, strideBytes,
-  lm.LM_NONE, 0, 0,
-  lm.LM_FLOAT, verticesPtr + 12, strideBytes,          // UV offset = 3 floats × 4 bytes
-  indexCount, lm.LM_UNSIGNED_SHORT, indicesPtr);
-
-// 5. Render loop — keep calling lmBegin until it returns false
-const bufs = lm.makeBeginFrameBuffers();
-while (lm.lmBegin(ctx, bufs.viewportPtr, bufs.viewPtr, bufs.projectionPtr)) {
-  const vp   = bufs.readViewport();
-  const view = bufs.readViewMatrix();
-  const proj = bufs.readProjectionMatrix();
-
-  gl.viewport(vp[0], vp[1], vp[2], vp[3]);
-  drawScene(gl, view, proj);                            // your scene draw call
-  lm.lmEnd(ctx);
-}
-bufs.dispose();
-
-// 6. Post-process and read back
-const tmpPtr = lm.allocF32(floatCount);
-lm.lmImageDilate(lightmapPtr, tmpPtr, W, H, C);
-lm.lmImageDilate(tmpPtr, lightmapPtr, W, H, C);
-lm.lmImagePower(lightmapPtr, W, H, C, 1.0 / 2.2, 0x7); // gamma correct RGB
-
-const result = lm.copyFromHeap(lightmapPtr, new Float32Array(floatCount));
-
-// 7. Clean up
-lm.lmDestroy(ctx);
-lm.free(tmpPtr);
-lm.free(lightmapPtr);
-```
 
 ---
 
