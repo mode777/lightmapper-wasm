@@ -1,15 +1,26 @@
 {
   "name": "lightmapper-wasm",
   "version": "0.1.0",
-  "private": true,
   "description": "Low-level JavaScript and WebAssembly wrapper for ands/lightmapper.",
   "type": "module",
-  "main": "src/index.js",
-  "types": "types/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./wasm": "./dist/wasm/lightmapper_wasm.mjs"
+  },
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "configure:wasm": "emcmake cmake -S . -B build/wasm -DLM_BUILD_WASM=ON",
     "build:wasm": "cmake --build build/wasm --config Release",
     "rebuild:wasm": "npm run configure:wasm && npm run build:wasm",
+    "build:dist": "node scripts/build-dist.mjs",
+    "pack": "npm run build:dist && npm pack --pack-destination dist",
     "serve:demo": "npx --yes serve . -l 8080",
     "typecheck": "tsc --noEmit"
   },

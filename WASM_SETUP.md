@@ -43,6 +43,28 @@ Expected artifacts under build folder:
 - build/wasm/wasm/lightmapper_wasm.mjs
 - build/wasm/wasm/lightmapper_wasm.wasm
 
+## Create the npm package
+
+After building the WASM module, assemble the distributable and pack it:
+
+1. Build the dist folder (copies JS, types, and WASM artifacts):
+
+   npm run build:dist
+
+2. Create the .tgz package in the dist folder:
+
+   npm run pack
+
+   This runs `build:dist` automatically, then `npm pack --pack-destination dist`.
+
+Expected artifacts under dist folder:
+
+- dist/index.js
+- dist/index.d.ts
+- dist/wasm/lightmapper_wasm.mjs
+- dist/wasm/lightmapper_wasm.wasm
+- dist/lightmapper-wasm-\<version\>.tgz
+
 ## JavaScript API entry points
 
 - Runtime wrapper: src/index.js
