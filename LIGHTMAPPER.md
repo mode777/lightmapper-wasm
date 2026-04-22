@@ -8,74 +8,35 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Installation & Build](#installation--build)
-3. [Module Initialization](#module-initialization)
+1. [Module Initialization](#module-initialization)
    - [`createLightmapperModule(options?)`](#createlightmappermoduleoptions)
    - [`CreateLightmapperModuleOptions`](#createlightmappermoduleoptions-1)
-4. [WebGL Context Management](#webgl-context-management)
-5. [WASM Heap Memory Helpers](#wasm-heap-memory-helpers)
+2. [WebGL Context Management](#webgl-context-management)
+3. [WASM Heap Memory Helpers](#wasm-heap-memory-helpers)
    - [Allocation](#allocation)
    - [Views (zero-copy)](#views-zero-copy)
    - [Copy helpers](#copy-helpers)
    - [Freeing memory](#freeing-memory)
-6. [Constants](#constants)
-7. [Core Lightmapping API](#core-lightmapping-api)
+4. [Constants](#constants)
+5. [Core Lightmapping API](#core-lightmapping-api)
    - [`lmCreate`](#lmcreate)
    - [`lmDestroy`](#lmdestroy)
    - [`lmSetTargetLightmap`](#lmsettargetlightmap)
    - [`lmSetGeometry`](#lmsetgeometry)
    - [`lmBegin` / `lmEnd` / `lmProgress`](#lmbegin--lmend--lmprogress)
    - [`makeBeginFrameBuffers`](#makebeginframebuffers)
-8. [Image Post-Processing](#image-post-processing)
+6. [Image Post-Processing](#image-post-processing)
    - [`lmImageMin` / `lmImageMax`](#lmimagemin--lmimagemax)
    - [`lmImageAdd` / `lmImageScale` / `lmImagePower`](#lmimageadd--lmimagescale--lmimagepower)
    - [`lmImageDilate` / `lmImageSmooth`](#lmimagedilate--lmimagesmooth)
    - [`lmImageDownsample`](#lmimagedownsample)
    - [`lmImageFtoUB`](#lmimageftub)
-9. [Validation Helpers](#validation-helpers)
-10. [Minimal Annotated Example](#minimal-annotated-example)
-11. [Multi-Bounce Global Illumination](#multi-bounce-global-illumination)
-12. [Multi-Object Scene Baking (Shared Atlas)](#multi-object-scene-baking-shared-atlas)
-13. [Quality Tips](#quality-tips)
-14. [Architecture Overview](#architecture-overview)
-
----
-
-## Prerequisites
-
-| Requirement | Version |
-|---|---|
-| Browser with **WebGL2** | Chrome 56+, Firefox 51+, Safari 15+, Edge 79+ |
-| **EXT_color_buffer_float** extension | Required for RGBA32F render targets |
-| **Emscripten** (build only) | 3.x recommended |
-| **CMake** (build only) | 3.13+ |
-| **Node.js** (dev server) | 18+ |
-
----
-
-## Installation & Build
-
-```bash
-# 1. Ensure Emscripten is on your PATH (see WASM_SETUP.md)
-
-# 2. Configure the WASM build
-npm run configure:wasm        # emcmake cmake -S . -B build/wasm -DLM_BUILD_WASM=ON
-
-# 3. Compile to WebAssembly
-npm run build:wasm            # cmake --build build/wasm --config Release
-
-# 4. Serve the demo
-npm run serve:demo            # npx serve . -l 8080
-```
-
-Build artifacts:
-- `build/wasm/wasm/lightmapper_wasm.mjs` — Emscripten ES module (JS glue)
-- `build/wasm/wasm/lightmapper_wasm.wasm` — compiled WASM binary
-
-Entry points:
-- **Runtime wrapper**: `src/index.js`
-- **Type definitions**: `types/index.d.ts`
+7. [Validation Helpers](#validation-helpers)
+8. [Minimal Annotated Example](#minimal-annotated-example)
+9. [Multi-Bounce Global Illumination](#multi-bounce-global-illumination)
+10. [Multi-Object Scene Baking (Shared Atlas)](#multi-object-scene-baking-shared-atlas)
+11. [Quality Tips](#quality-tips)
+12. [Architecture Overview](#architecture-overview)
 
 ---
 
@@ -429,7 +390,7 @@ A complete, minimal browser example that loads a mesh, bakes a single-bounce lig
 <body>
 <canvas id="viewport" width="800" height="600"></canvas>
 <script type="module">
-import { createLightmapperModule } from "./src/index.js";
+import { createLightmapperModule } from "lightmapper-wasm";
 
 // ─── Your scene setup (replace with your own mesh loader) ───
 // Vertex layout: [x, y, z, u, v] per vertex (interleaved)

@@ -2,6 +2,28 @@
   "name": "lightmapper-wasm",
   "version": "0.1.0",
   "description": "Low-level JavaScript and WebAssembly wrapper for ands/lightmapper.",
+  "license": "Unlicense",
+  "author": "alexander.klingenbeck@gmx.de",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mode777/lightmapper-wasm.git"
+  },
+  "homepage": "https://github.com/mode777/lightmapper-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/mode777/lightmapper-wasm/issues"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "lightmapper",
+    "lightmap",
+    "baking",
+    "webgl2",
+    "graphics"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +35,8 @@
     "./wasm": "./dist/wasm/lightmapper_wasm.mjs"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "LICENSE"
   ],
   "scripts": {
     "configure:wasm": "emcmake cmake -S . -B build/wasm -DLM_BUILD_WASM=ON",

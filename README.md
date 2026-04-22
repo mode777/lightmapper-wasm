@@ -15,7 +15,19 @@ The original C library is included as a submodule under [`thirdparty/lightmapper
 
 See [WASM_SETUP.md](WASM_SETUP.md) for detailed Emscripten installation and build instructions.
 
-## Build
+## Installation
+
+```bash
+npm install lightmapper-wasm
+```
+
+Then import in your project:
+
+```js
+import { createLightmapperModule } from "lightmapper-wasm";
+```
+
+## Build from source
 
 ```bash
 # 1. Ensure Emscripten is on your PATH (see WASM_SETUP.md)
@@ -29,7 +41,7 @@ npm run serve:demo
 ## Quick Start
 
 ```js
-import { createLightmapperModule } from "./src/index.js";
+import { createLightmapperModule } from "lightmapper-wasm";
 
 // 1. Initialize with an existing WebGL2 canvas
 const canvas = document.getElementById("viewport");
