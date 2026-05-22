@@ -7,28 +7,45 @@ const DIST = join(ROOT, "dist");
 
 const WASM_BUILD_DIR = join(ROOT, "build", "wasm", "wasm");
 const WASM_MJS = "lightmapper_wasm.mjs";
-const WASM_BIN = "lightmapper_wasm.wasm";
 
 // -- clean dist/ -------------------------------------------------------------
 rmSync(DIST, { recursive: true, force: true });
-mkdirSync(join(DIST, "wasm"), { recursive: true });
+mkdirSync(DIST, { recursive: true });
 
-// -- copy WASM artefacts -----------------------------------------------------
-cpSync(join(WASM_BUILD_DIR, WASM_MJS), join(DIST, "wasm", WASM_MJS));
-cpSync(join(WASM_BUILD_DIR, WASM_BIN), join(DIST, "wasm", WASM_BIN));
+// -- read Emscripten single-file output (contains embedded base64 wasm) ------
+let emscriptenSource = readFileSync(join(WASM_BUILD_DIR, WASM_MJS), "utf8");
 
-// -- copy & patch index.js ---------------------------------------------------
+// Strip the ES module export — we'll reference the function directly
+emscriptenSource = emscriptenSource.replace(/export default Module;\s*$/, "");
+
+// -- read & patch index.js ---------------------------------------------------
 let indexSrc = readFileSync(join(ROOT, "src", "index.js"), "utf8");
 
-// Rewrite the default WASM path so it resolves relative to dist/index.js
+// Remove the DEFAULT_WASM_MODULE_RELATIVE_PATH constant
 indexSrc = indexSrc.replace(
-  /const DEFAULT_WASM_MODULE_RELATIVE_PATH\s*=\s*"[^"]+";/,
-  'const DEFAULT_WASM_MODULE_RELATIVE_PATH = "./wasm/lightmapper_wasm.mjs";'
+  /const DEFAULT_WASM_MODULE_RELATIVE_PATH\s*=\s*"[^"]+";?\n?/,
+  ""
 );
+
+// Replace the dynamic import fallback with the inlined factory
+indexSrc = indexSrc.replace(
+  /const moduleFactory = options\.moduleFactory\s*\n?\s*\|\|\s*\(await import\(DEFAULT_WASM_MODULE_RELATIVE_PATH\)\)\.default;/,
+  "const moduleFactory = options.moduleFactory || _inlinedModuleFactory;"
+);
+
+// Prepend the inlined Emscripten factory at the top of the file
+const inlineHeader = `// --- Inlined Emscripten WASM module (single-file, base64-embedded) ---
+${emscriptenSource}
+const _inlinedModuleFactory = Module;
+// --- End inlined module ---
+
+`;
+
+indexSrc = inlineHeader + indexSrc;
 
 writeFileSync(join(DIST, "index.js"), indexSrc, "utf8");
 
 // -- copy type definitions ---------------------------------------------------
 cpSync(join(ROOT, "types", "index.d.ts"), join(DIST, "index.d.ts"));
 
-console.log("dist/ assembled successfully.");
+console.log("dist/ assembled successfully (single-file bundle).");

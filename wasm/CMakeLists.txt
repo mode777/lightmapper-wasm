@@ -13,6 +13,7 @@ target_include_directories(${LM_WASM_TARGET}
 target_link_options(${LM_WASM_TARGET}
     PRIVATE
         "-sWASM=1"
+        "-sSINGLE_FILE=1"
         "-sMODULARIZE=1"
         "-sEXPORT_ES6=1"
         "-sALLOW_MEMORY_GROWTH=1"

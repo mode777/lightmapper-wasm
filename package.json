@@ -31,8 +31,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./wasm": "./dist/wasm/lightmapper_wasm.mjs"
+    }
   },
   "files": [
     "dist/",
