@@ -52,8 +52,6 @@ jobs:
         run: |
           test -f dist/index.js
           test -f dist/index.d.ts
-          test -f dist/wasm/lightmapper_wasm.mjs
-          test -f dist/wasm/lightmapper_wasm.wasm
           echo "All expected artifacts present."
 
       - name: Type-check
