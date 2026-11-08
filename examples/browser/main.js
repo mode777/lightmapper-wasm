@@ -32,6 +32,10 @@ let scene;
 let camera;
 let rafHandle = 0;
 
+// Diagnostics of the most recent bake (null before the first bake).
+// Exposed for debugging and automated example checks.
+window.__lightmapperBakeStats = null;
+
 function setStatus(text, warning = false) {
   statusEl.textContent = text;
   statusEl.classList.toggle("warning", warning);
@@ -72,7 +76,8 @@ async function bake(meshScene) {
     for (let bounce = 0; bounce < totalBounces; bounce++) {
       setStatus(`Bounce ${bounce + 1}/${totalBounces} — starting...`);
 
-      const ambient = Number(ambientSlider.value) ?? 0.1;
+      const ambientValue = Number(ambientSlider.value);
+      const ambient = Number.isFinite(ambientValue) ? ambientValue : 0.1;
       lmCtx = lm.lmCreate(
         64,
         0.001,
@@ -141,7 +146,11 @@ async function bake(meshScene) {
       lm.lmImageSmooth(lightmapPtr, tempPtr, meshScene.lightmapWidth, meshScene.lightmapHeight, 4);
       lm.lmImageDilate(tempPtr, lightmapPtr, meshScene.lightmapWidth, meshScene.lightmapHeight, 4);
 
-      // Upload intermediate lightmap to GPU so the next bounce sees indirect light
+      // Upload this bounce's result to GPU so the next bounce sees its light.
+      // Emissive cubes and the ambient sky are re-rendered/re-applied on every
+      // bounce, so each bounce's result already contains the direct light plus
+      // all indirect generations so far — the LAST bounce is the final lightmap.
+      // (Summing bounces would double-count the direct light.)
       const bounceLightmap = lm.copyFromHeap(lightmapPtr, new Float32Array(lightmapFloatCount));
       gl.bindTexture(gl.TEXTURE_2D, meshScene.lightmapTexture);
       gl.texImage2D(
@@ -172,6 +181,19 @@ async function bake(meshScene) {
       gl.FLOAT,
       finalLightmap
     );
+
+    let rgbSum = 0;
+    let maxRgb = 0;
+    for (let i = 0; i < finalLightmap.length; i += 4) {
+      rgbSum += finalLightmap[i] + finalLightmap[i + 1] + finalLightmap[i + 2];
+      maxRgb = Math.max(maxRgb, finalLightmap[i], finalLightmap[i + 1], finalLightmap[i + 2]);
+    }
+    window.__lightmapperBakeStats = {
+      bounces: totalBounces,
+      triangles: meshScene.indexCount / 3,
+      meanRgb: rgbSum / (finalLightmap.length / 4) / 3,
+      maxRgb
+    };
 
     setStatus(`Finished baking ${meshScene.indexCount / 3} triangles (${totalBounces} bounce${totalBounces > 1 ? "s" : ""}).`);
   } finally {

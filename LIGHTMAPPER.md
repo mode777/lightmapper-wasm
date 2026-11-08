@@ -537,7 +537,18 @@ main().catch(console.error);
 
 ## Multi-Bounce Global Illumination
 
-For indirect lighting (color bleeding, soft shadows), run multiple bounces. After each bounce, upload the intermediate lightmap to the GPU so subsequent bounces see the accumulated light.
+For indirect lighting (color bleeding, soft shadows), run multiple bounces. After each bounce, upload the intermediate lightmap to the GPU so subsequent bounces see its light.
+
+**Why the last bounce is the final lightmap (and summing bounces is wrong):**
+the hemisphere cameras see whatever your `drawScene` renders — including
+emissive light geometry and the `lmCreate` clear color (sky/ambient) — on
+**every** bounce. Each bounce therefore re-measures the direct light and adds
+one more generation of indirect light, so the last bounce already contains
+direct light plus all previous generations of indirect light. Adding bounce
+results together would double-count the direct term (empirically, the hottest
+texel comes out exactly `2^(1/2.2)`× too bright after gamma). Only keep an
+accumulator if you render emitters/sky exclusively on the first bounce and
+feed each subsequent bounce just the previous accumulated lightmap.
 
 ```js
 const totalBounces = 3;
@@ -578,7 +589,8 @@ for (let bounce = 0; bounce < totalBounces; bounce++) {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, W, H, 0, gl.RGBA, gl.FLOAT, bounceData);
 }
 
-// Final gamma correction after all bounces
+// Final gamma correction: the last bounce already holds direct light plus all
+// indirect generations — do not sum bounces (see note above)
 lm.lmImagePower(lightmapPtr, W, H, C, 1.0 / 2.2, 0x7);
 ```
 
@@ -668,7 +680,9 @@ for (let bounce = 0; bounce < totalBounces; bounce++) {
   lm.lmImageSmooth(lightmapPtr, tempPtr, atlasW, atlasH, C);
   lm.lmImageDilate(tempPtr, lightmapPtr, atlasW, atlasH, C);
 
-  // 4. Upload to GPU ONCE — now the next bounce will see indirect light
+  // 4. Upload to GPU ONCE — the next bounce then sees this bounce's light
+  //    (direct light is re-measured every bounce; see the Multi-Bounce note
+  //    above for why the LAST bounce is the final lightmap)
   const bounceData = lm.copyFromHeap(lightmapPtr, new Float32Array(floatCount));
   gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
   gl.texImage2D(
@@ -697,7 +711,8 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, atlasW, atlasH, 0, gl.RGBA, gl.FLOAT
 |---|---|
 | Uploading the CPU lightmap to the GPU texture **between objects** within the same bounce | Asymmetric lighting — earlier objects influence later ones but not vice versa |
 | Drawing only the current object in `drawScene` during baking | Other objects become invisible to the hemisphere cameras → missing shadows and occlusion |
-| Forgetting to clear the CPU buffer at the start of each bounce | Results accumulate incorrectly across bounces |
+| Forgetting to clear the CPU buffer at the start of each bounce | Stale texels from the previous bounce leak into this bounce's result |
+| Summing per-bounce results into an accumulator | Double-counts direct light — with emitters re-rendered every bounce, the last bounce already contains it (see the Multi-Bounce note above) |
 | Using overlapping UVs in the atlas | Objects overwrite each other's lightmap texels |
 
 ---
