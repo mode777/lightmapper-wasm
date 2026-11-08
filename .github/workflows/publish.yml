@@ -31,7 +31,10 @@ jobs:
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
-          version: latest
+          # Pinned to the toolchain the verification box and the golden bake
+          # data were produced with; newer emsdk emits a stricter
+          # ENVIRONMENT=web guard that rejects the Node smoke-test shim.
+          version: '3.1.64'
 
       - name: Verify toolchain
         run: |
@@ -66,7 +69,8 @@ jobs:
       - name: Install chrome-headless-shell
         id: chrome
         run: |
-          INSTALLED="$(npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path /tmp/chrome | awk '{print $NF}' | tail -n 1)"
+          # Pinned to the chrome build the golden was captured with.
+          INSTALLED="$(npx --yes @puppeteer/browsers install chrome-headless-shell@131.0.6778.264 --path /tmp/chrome | awk '{print $NF}' | tail -n 1)"
           if [ -x "$INSTALLED" ]; then
             CHROME_SHELL="$INSTALLED"
           else
