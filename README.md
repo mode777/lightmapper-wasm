@@ -38,6 +38,17 @@ npm run build:wasm
 npm run serve:demo
 ```
 
+### Testing
+
+```bash
+npm test                        # Node smoke test (constants, heap helpers, error paths)
+npm run test:bake               # Headless Chrome golden bake against dist/index.js
+npm run test:update-golden      # Regenerate test/golden/ from a fresh bake (review the diff)
+SSH_HOST=… SSH_USER=… SSH_PASSWORD=… npm run verify:remote   # Full build + tests on the verification box
+```
+
+`test:bake` needs `chrome-headless-shell`; set `CHROME_SHELL_PATH` if it is not in the default location. Golden data lives in `test/golden/quad-bake.f32` and `test/golden/quad-bake.stats.json`.
+
 ## Quick Start
 
 ```js

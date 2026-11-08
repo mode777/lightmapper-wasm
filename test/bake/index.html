@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>lightmapper-wasm golden bake test</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        color: #eee;
+        font: 14px/1.4 monospace;
+      }
+      #status {
+        padding: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status">bake test starting…</div>
+    <script>
+      // Surface any uncaught failure to the puppeteer driver as a test result.
+      (function () {
+        function fail(error) {
+          if (!window.__bakeTestResult) {
+            window.__bakeTestResult = {
+              ok: false,
+              error: String((error && error.stack) || error),
+              stats: null
+            };
+          }
+          var status = document.getElementById("status");
+          if (status) status.textContent = "bake test failed: " + String((error && error.message) || error);
+        }
+        window.addEventListener("error", function (event) {
+          fail(event.error || event.message);
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+          fail(event.reason);
+        });
+      })();
+    </script>
+    <script type="module" src="./bake.mjs"></script>
+  </body>
+</html>

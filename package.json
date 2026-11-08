@@ -44,9 +44,14 @@
     "build:dist": "node scripts/build-dist.mjs",
     "pack": "npm run build:dist && npm pack --pack-destination dist",
     "serve:demo": "npx --yes serve . -l 8080",
+    "test": "node test/smoke.test.mjs",
+    "test:bake": "node scripts/run-headless-test.mjs",
+    "test:update-golden": "node scripts/run-headless-test.mjs --update-golden",
+    "verify:remote": "bash scripts/verify-remote.sh",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "puppeteer-core": "^24.43.1",
     "typescript": "^5.8.2"
   }
 }

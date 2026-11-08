@@ -3,6 +3,9 @@ name: Build & Publish to npm
 on:
   release:
     types: [published]
+  push:
+    branches: [Main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -57,5 +60,28 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Node smoke test
+        run: npm test
+
+      - name: Install chrome-headless-shell
+        id: chrome
+        run: |
+          INSTALLED="$(npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path /tmp/chrome | awk '{print $NF}' | tail -n 1)"
+          if [ -x "$INSTALLED" ]; then
+            CHROME_SHELL="$INSTALLED"
+          else
+            CHROME_SHELL="$(find "$INSTALLED" -type f -name chrome-headless-shell | head -n 1)"
+          fi
+          test -n "$CHROME_SHELL"
+          test -x "$CHROME_SHELL"
+          echo "path=$CHROME_SHELL" >> "$GITHUB_OUTPUT"
+          echo "chrome-headless-shell: $CHROME_SHELL"
+
+      - name: Browser golden bake test
+        run: npm run test:bake
+        env:
+          CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
+
       - name: Publish to npm
+        if: github.event_name == 'release'
         run: npm publish --provenance --access public
