@@ -55,9 +55,19 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "83d06eb425b4269e4bc74ceac3a4144987846ee3014703419112a11ea8d3a777",
+      "sourceHash": "e39c34b69226f1d6bde7628633c22c61759e7c78b58e23baee4e61ac8893587e",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T17:46:13.709Z"
+      "capturedAt": "2026-11-09T19:17:03.094Z"
+    },
+    "hdri-outdoor": {
+      "file": "hdri-outdoor.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "81c03575b83af3ef5e3d45ffbf36d6aba12abbabab29524ee4d99473762060a8",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T19:19:34.682Z"
     }
   }
 }

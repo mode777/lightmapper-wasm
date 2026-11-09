@@ -24,19 +24,21 @@ library it is built on and link to it.
   depth writes disabled. Environment radiance contributes to direct and
   multi-bounce lighting, and the clear color is no longer the visible
   background.
-- Add a fifth showcase scenario, `hdri-studio`, lit solely by a checked-in CC0
-  HDRI from Poly Haven. The scenario has no analytic lights and no emissive
-  meshes; the environment is the only light source. Add an `environment`
-  technique section to the gallery filters.
-- Decode the HDRI once in the site with three.js `HDRLoader` in `FloatType`
+- Add two environment-only showcase scenarios: `hdri-studio` (a checked-in
+  Poly Haven studio HDRI) and `hdri-outdoor` (a checked-in Poly Haven midday
+  outdoor sky HDRI). Neither scenario has analytic lights or emissive meshes;
+  the environment is the only light source. Add an `environment` technique
+  section to the gallery filters.
+- Decode each HDRI once in the site with three.js `HDRLoader` in `FloatType`
   mode, normalize it to a bottom-up linear equirectangular buffer, and use the
   full-resolution data for the three.js display background. The bake uses a
-  prefiltered irradiance copy of the same source, which is the standard setup
-  for diffuse environment lighting and avoids aliasing the HDRI's softbox
-  diffusion grid at hemisphere resolution. The display layer gains an
-  equirectangular HDRI background path; it remains bake-free.
-- Check in the HDRI under `site/src/assets/environments/` with provenance and
-  license notes. Add a developer script that resolves the 1k HDR download URL
+  128 × 64 prefiltered irradiance copy of the same source, which is the
+  standard setup for diffuse environment lighting and avoids aliasing the
+  studio softbox grid or the outdoor sun/cloud detail at hemisphere resolution.
+  The display layer gains an equirectangular HDRI background path; it remains
+  bake-free.
+- Check in both HDRIs under `site/src/assets/environments/` with provenance and
+  license notes. Add a developer script that resolves each 1k HDR download URL
   through the Poly Haven API, verifies the expected size/MD5 and refreshes the
   local asset. The site never fetches Poly Haven at runtime and CI does not
   depend on the network for assets.
@@ -47,8 +49,9 @@ library it is built on and link to it.
   `https://github.com/ands/lightmapper` (and the author credit). Rename the
   footer's upstream link so it names `lightmapper.h` explicitly.
 - Update the catalog, section coverage, source coverage, thumbnails, headless
-  harness checks and smoke bake for the fifth scenario. Add environment-only,
-  black-environment, invalid-environment and environment-load-failure checks.
+  harness checks and smoke bake for both environment scenarios. Add
+  environment-only, black-environment, invalid-environment,
+  environment-load-failure and prefilter/interpolation checks.
 - Update `site/README.md`, the root README showcase section,
   `docs/decisions.md` (new AD-017) and `docs/wasm-improvements.md` (roadmap row
   11) with the implemented behavior and asset provenance.
@@ -65,9 +68,9 @@ None. This change extends the showcase capabilities introduced by
 - `bake-harness`: add an optional equirectangular HDR environment input, a
   hemisphere-pass skybox draw, environment validation, texture lifecycle and
   environment-specific verification.
-- `showcase-site`: add the `hdri-studio` scenario and `environment` section,
-  HDRI asset provenance and build coverage, the attribution requirement, and
-  the neutral global navigation rule.
+- `showcase-site`: add the `hdri-studio` and `hdri-outdoor` scenarios and the
+  `environment` section, HDRI asset provenance and build coverage, the
+  attribution requirement, and the neutral global navigation rule.
 - `threejs-display`: support a linear equirectangular HDRI scene background in
   addition to solid and transparent backgrounds, including texture ownership
   and disposal.
@@ -78,10 +81,10 @@ None. This change extends the showcase capabilities introduced by
   fullscreen skybox draw.
 - `site/src/environment/` — new HDR loading/normalization module.
 - `site/src/display/` — equirectangular HDRI background support.
-- `site/src/demos/` — `hdri-studio`, catalog/source registration, the
-  `environment` section and scene metadata.
-- `site/src/assets/environments/` — checked-in Poly Haven HDRI, provenance and
-  license note.
+- `site/src/demos/` — `hdri-studio`, `hdri-outdoor`, catalog/source
+  registration, the `environment` section and scene metadata.
+- `site/src/assets/environments/` — checked-in Poly Haven HDRIs, provenance and
+  license notes.
 - `site/scripts/` — HDRI fetch/refresh script, smoke and build checks.
 - `site/test/` — catalog, scene, source, environment, thumbnail and harness
   coverage for the new path.

@@ -48,7 +48,7 @@ export const hdriStudio: SceneDefinition = {
     // prefiltered irradiance copy, one fine interpolation pass avoids the
     // coarse 16-texel grid, and four smoothing passes hide the remaining
     // sampling mottling.
-    smoothPasses: 4,
+    smoothPasses: 12,
     interpolationPasses: 1,
     interpolationThreshold: 0.5
   },

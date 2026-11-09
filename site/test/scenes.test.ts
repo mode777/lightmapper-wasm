@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCENARIOS, validateScene } from "../src/demos";
+import { hdriOutdoor } from "../src/demos/hdri-outdoor";
 import { hdriStudio } from "../src/demos/hdri-studio";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
 import { validateGeometry } from "../src/demos/geometry";
@@ -34,6 +35,18 @@ describe("scene catalog validity", () => {
     expect(hdriStudio.meta.sections).toEqual(["environment"]);
     expect(hdriStudio.bake.environment?.url).toContain("studio_small_09_1k.hdr");
     expect(hdriStudio.bake.environment?.intensity).toBeGreaterThan(0);
+  });
+
+  it("keeps hdri-outdoor environment-only with black ambient and no emitters", () => {
+    const result = validateScene(hdriOutdoor);
+    expect(result.litCount).toBeGreaterThan(0);
+    expect(result.emissiveCount).toBe(0);
+    expect(hdriOutdoor.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriOutdoor.meta.sections).toEqual(["environment"]);
+    expect(hdriOutdoor.bake.environment?.url).toContain(
+      "kloofendal_48d_partly_cloudy_1k.hdr"
+    );
+    expect(hdriOutdoor.bake.environment?.intensity).toBeGreaterThan(0);
   });
 
   it("rejects non-finite geometry with the scene and mesh name", () => {

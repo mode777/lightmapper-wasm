@@ -91,7 +91,7 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   `npm run test:consumer` cover the dist layout, loader scenarios and a Vite
   6.4.5 consumer (F5, F12 packaging).
 - The public showcase lives under `site/` and consumes the tested `dist`
-  artifact with `lightmapper-wasm: file:..` (AD-015). It has five procedural
+  artifact with `lightmapper-wasm: file:..` (AD-015). It has six procedural
   scenarios, an xatlas-everywhere UV pipeline with the `[0,1)` clamp (AD-016),
   an HDRI environment path for the bake skybox and display background (AD-017),
   a display-agnostic raw-WebGL bake harness, a three.js display layer,
@@ -432,7 +432,7 @@ are the intended kebab-case change names.
 | 8 | `typed-wasm-api` | this repo | 5 | Proposed | Generated types, error class, heap validation, lifecycle |
 | 9 | `wasm-release-docs` | both | 1–8 | Proposed | CHANGELOG, tag gate, docs, vendor pin, example cleanup |
 | 10 | `add-showcase-site` (AD-015, AD-016) | this repo | 5 | Implemented | Gallery, xatlas-everywhere UVs, bake harness, three.js display, Pages deploy |
-| 11 | `add-hdri-environment-baking` (AD-017) | this repo | 10 | Implemented (1k Poly Haven HDRI) | Environment skybox and an HDRI studio scenario |
+| 11 | `add-hdri-environment-baking` (AD-017) | this repo | 10 | Implemented (two 1k Poly Haven HDRIs) | Environment skybox, studio and outdoor HDRI scenarios |
 | 12 | `promote-bake-harness` (AD-018) | this repo | 10, 11 | Planned | `lightmapper-wasm/bake` package entry |
 | 13 | `add-three-adapter` (AD-019) | this repo | 12 | Planned | Optional `lightmapper-wasm/three` package entry |
 
@@ -737,13 +737,14 @@ multi-object/shared-atlas workflow with a reusable bake path.
 **Why:** there was no gallery and every demo repeated the same GL setup,
 lightmap allocation, bounce loop and readback plumbing.
 
-**Scope:** `site/` (gallery, five scenarios, xatlas unwrap, raw-WebGL bake
+**Scope:** `site/` (gallery, six scenarios, xatlas unwrap, raw-WebGL bake
 harness, three.js display, preview/atlas/code views, thumbnails and tests),
 the build workflow's dist artifact, a site job and a `Main`-only Pages deploy.
 
 **Acceptance:**
-- `ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas` and
-  `hdri-studio` build procedurally and share the catalog metadata contract.
+- `ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
+  `hdri-studio` and `hdri-outdoor` build procedurally and share the catalog
+  metadata contract.
 - Every lit mesh is packed into one xatlas atlas; positions/normals are copied
   through `xref`; normalized UVs are clamped below `1.0`; emitters are not in
   the atlas.
@@ -774,12 +775,13 @@ AD-004, AD-006 and AD-009 and respects AD-013.
 equirectangular HDRI, draws it as a fullscreen skybox for every lightmapper
 hemisphere side, and uses the full decoded data for the three.js background.
 The bake uses a 128 × 64 prefiltered irradiance copy of the same source. The
-checked-in asset is Poly Haven's CC0 `studio_small_09` 1k HDR; the site serves
-it from its own origin and the refresh script verifies its size/MD5 through
-the Poly Haven API.
+checked-in assets are Poly Haven's CC0 `studio_small_09` and
+`kloofendal_48d_partly_cloudy` 1k HDRs; the site serves them from its own
+origin and the refresh script verifies their sizes/MD5s through the Poly Haven
+API.
 
-**Goal:** prove environment-only lighting and give the showcase a fifth
-technique.
+**Goal:** prove environment-only studio and outdoor lighting and give the
+showcase two more techniques.
 
 **Why:** the gallery could only bake constant ambient/emissive lighting, while
 HDRI environments are the common way studio and product scenes are lit.
@@ -788,9 +790,10 @@ HDRI environments are the common way studio and product scenes are lit.
 lifecycle, interpolation and smoothing controls), `site/src/environment/hdr.ts`
 (HDRLoader decode, bottom-up normalization, prefiltered bake irradiance,
 full-resolution display texture), `site/src/display/` (HDRI background),
-`site/src/demos/hdri-studio.ts`, the `environment` section, the gallery
-attribution/navigation copy, the checked-in HDRI and provenance, tests,
-thumbnails, README/config/ADR updates. No C or package changes.
+`site/src/demos/hdri-studio.ts`, `site/src/demos/hdri-outdoor.ts`, the
+`environment` section, the gallery attribution/navigation copy, the checked-in
+HDRIs and provenance, tests, thumbnails, README/config/ADR updates. No C or
+package changes.
 
 **Acceptance:**
 - A constant environment with black ambient and no emitters produces a finite,
@@ -800,14 +803,15 @@ thumbnails, README/config/ADR updates. No C or package changes.
   rejected with a clear error.
 - The environment texture and VAO are released on success, failure and
   cancellation.
-- `hdri-studio` has six lit meshes, no emitters, black ambient and a 512²/H32
-  two-bounce preset; its preview bake completes in headless SwiftShader.
-- The raw 1k softbox grid does not produce large diamond artifacts: the bake
-  uses a prefiltered irradiance copy, one fine interpolation pass and four
-  smoothing passes, verified by a headless stage capture.
-- The site emits and references the hashed HDRI, and never requests Poly Haven
-  at runtime.
-- The gallery lists five scenarios with an `environment` filter, attributes
+- `hdri-studio` has six lit meshes and `hdri-outdoor` has eight lit meshes;
+  both have no emitters, black ambient and a 512²/H32 two-bounce preset, and
+  their preview bakes complete in headless SwiftShader.
+- The raw 1k softbox/sun detail does not produce large diamond artifacts: the
+  bake uses a prefiltered irradiance copy, one fine interpolation pass and
+  twelve smoothing passes, verified by a headless stage capture.
+- The site emits and references both hashed HDRIs, and never requests Poly
+  Haven at runtime.
+- The gallery lists six scenarios with an `environment` filter, attributes
   `lightmapper.h` with an upstream link, and does not feature an individual
   scenario in the global navigation or hero.
 
@@ -865,11 +869,11 @@ release artifact and a golden test on top of. The third change,
 `wasm-release-build`, is implemented with a 44,136-byte wasm. The fifth
 change, `separate-wasm-loader`, is implemented with the same 44,136-byte wasm
 shipped as a separate asset beside the default entry plus a `./single`
-embedded entry. Change 10, `add-showcase-site`, is implemented with the five
+embedded entry. Change 10, `add-showcase-site`, is implemented with the six
 scenarios, the xatlas-everywhere pipeline, the bake harness/display and the
 Pages deployment. Change 11, `add-hdri-environment-baking`, is implemented with
-the environment skybox, `hdri-studio`, the checked-in Poly Haven asset and the
-attribution/navigation copy. The next planned change in the showcase sequence
+the environment skybox, `hdri-studio`, `hdri-outdoor`, the checked-in Poly
+Haven assets and the attribution/navigation copy. The next planned change in the showcase sequence
 is `promote-bake-harness`; `worker-support` remains an independent open item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a

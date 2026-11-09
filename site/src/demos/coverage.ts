@@ -21,7 +21,8 @@ export const EXPECTED_SCENARIO_IDS = [
   "cornell-box",
   "emissive-alcove",
   "tabletop-atlas",
-  "hdri-studio"
+  "hdri-studio",
+  "hdri-outdoor"
 ] as const;
 
 export type ExpectedScenarioId = (typeof EXPECTED_SCENARIO_IDS)[number];

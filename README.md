@@ -214,12 +214,13 @@ private Vite + TypeScript consumer that links this checkout with
 `lightmapper-wasm: file:..`; it is **not** part of the npm tarball and adds no
 runtime dependency to the package.
 
-The five scenarios are `ao-studio` (ambient-only AO), `cornell-box`
+The six scenarios are `ao-studio` (ambient-only AO), `cornell-box`
 (multi-bounce GI and color bleeding), `emissive-alcove` (HDR neon emitters),
-`tabletop-atlas` (multiple meshes in one shared xatlas atlas) and `hdri-studio`
-(environment-only lighting from a checked-in Poly Haven HDRI). Every scenario
-unwraps its lit meshes through `xatlas-wasm`, bakes with the raw-WebGL harness
-and displays the result with three.js. The gallery credits the underlying
+`tabletop-atlas` (multiple meshes in one shared xatlas atlas), `hdri-studio`
+(environment-only studio lighting from a checked-in Poly Haven HDRI) and
+`hdri-outdoor` (environment-only midday daylight from a checked-in Poly Haven
+sky HDRI). Every scenario unwraps its lit meshes through `xatlas-wasm`, bakes
+with the raw-WebGL harness and displays the result with three.js. The gallery credits the underlying
 [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and
 global navigation does not feature an individual scenario; the Cornell box is
 one catalog example.

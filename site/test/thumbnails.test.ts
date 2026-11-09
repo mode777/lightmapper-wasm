@@ -119,11 +119,14 @@ describe("thumbnail manifest", () => {
     expect(SHARED_FILES).toEqual([...SHARED_SOURCE_FILES]);
   });
 
-  it("includes the checked-in HDRI in the hdri-studio source hash", () => {
-    const environment = "src/assets/environments/studio_small_09_1k.hdr";
-    expect(sourceFilesFor("hdri-studio")).toContain(environment);
-    expect(sourceFilesFor("cornell-box")).not.toContain(environment);
-    expect(sourceHash("hdri-studio")).not.toBe(sourceHash("cornell-box"));
+  it("includes the checked-in HDRIs in the environment source hashes", () => {
+    const studio = "src/assets/environments/studio_small_09_1k.hdr";
+    const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
+    expect(sourceFilesFor("hdri-studio")).toContain(studio);
+    expect(sourceFilesFor("hdri-outdoor")).toContain(outdoor);
+    expect(sourceFilesFor("cornell-box")).not.toContain(studio);
+    expect(sourceFilesFor("cornell-box")).not.toContain(outdoor);
+    expect(sourceHash("hdri-studio")).not.toBe(sourceHash("hdri-outdoor"));
   });
 
   it("has no orphan thumbnail images", () => {

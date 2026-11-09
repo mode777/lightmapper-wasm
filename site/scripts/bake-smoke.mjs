@@ -39,7 +39,7 @@ async function checkGallery(browser, base, results) {
       timeout: 60_000
     });
     const count = await page.$$eval(".scene-card", (cards) => cards.length);
-    results.push(check("gallery renders five scenarios", count === 5, `saw ${count}`));
+    results.push(check("gallery renders six scenarios", count === 6, `saw ${count}`));
 
     await page.click('[data-filter="ambient"]');
     const visible = await page.$$eval(".scene-card", (cards) =>
@@ -55,15 +55,17 @@ async function checkGallery(browser, base, results) {
     );
     results.push(
       check(
-        "gallery filter narrows to the environment scenario",
-        environmentVisible.length === 1 && environmentVisible[0] === "hdri-studio",
+        "gallery filter narrows to the environment scenarios",
+        environmentVisible.length === 2 &&
+          environmentVisible.includes("hdri-studio") &&
+          environmentVisible.includes("hdri-outdoor"),
         environmentVisible.join(",")
       )
     );
 
     await page.click('[data-filter="all"]');
     const restored = await page.$$eval(".scene-card", (cards) => cards.filter((card) => !card.hidden).length);
-    results.push(check("gallery filter restores all scenarios", restored === 5, `saw ${restored}`));
+    results.push(check("gallery filter restores all scenarios", restored === 6, `saw ${restored}`));
 
     await page.waitForFunction(
       () => [...document.querySelectorAll(".card-preview img")].every((image) => image.complete),
@@ -75,7 +77,7 @@ async function checkGallery(browser, base, results) {
     results.push(
       check(
         "gallery loads the checked-in thumbnails",
-        thumbnails.length === 5 && thumbnails.every((image) => image.width > 0 && image.src.includes(".webp")),
+        thumbnails.length === 6 && thumbnails.every((image) => image.width > 0 && image.src.includes(".webp")),
         JSON.stringify(thumbnails)
       )
     );
@@ -182,8 +184,8 @@ async function checkPreviewBake(browser, base, id, results) {
     const bakesAfter = await page.evaluate(() => window.__showcase?.bakes);
     results.push(check(`${id} switching tabs does not re-bake`, bakesAfter === bakesBefore, `${bakesBefore} -> ${bakesAfter}`));
 
-    if (id === "hdri-studio") {
-      const hdriRequests = requests.filter((url) => url.includes("studio_small_09_1k.hdr"));
+    if (id.startsWith("hdri-")) {
+      const hdriRequests = requests.filter((url) => url.includes(".hdr"));
       const external = requests.filter(
         (url) => url.includes("polyhaven.com") || url.includes("polyhaven.org")
       );
@@ -258,6 +260,7 @@ async function main() {
     await checkPreviewBake(browser, server.url, "cornell-box", results);
     await checkPreviewBake(browser, server.url, "tabletop-atlas", results);
     await checkPreviewBake(browser, server.url, "hdri-studio", results);
+    await checkPreviewBake(browser, server.url, "hdri-outdoor", results);
     for (const mode of FAILURE_ROUTES) {
       await checkFailureState(browser, server.url, mode, results);
     }

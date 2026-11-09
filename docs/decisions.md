@@ -303,17 +303,17 @@ equirectangular HDR environment, draws it as a fullscreen skybox for every
 lightmapper hemisphere side before scene geometry, and uses the full decoded
 data as a linear equirectangular three.js background. The bake receives a
 prefiltered 128 × 64 irradiance copy of the same source, so the diffuse
-lightmap does not resolve the HDRI's softbox diffusion grid. The environment
-asset is a checked-in CC0 Poly Haven HDRI with recorded provenance and a
-developer refresh script; the site does not fetch it at runtime. No C header,
+lightmap does not resolve the HDRI's softbox/sun-grid detail. The environment
+assets are checked-in CC0 Poly Haven HDRIs with recorded provenance and a
+developer refresh script; the site does not fetch them at runtime. No C header,
 wasm build, loader or package API changes.
 
-**Consequences.** The showcase gains an `hdri-studio` scenario and an
-`environment` section; the harness keeps its display-agnostic boundary; the
-display gains an equirectangular background path; and the asset is site-only
-and excluded from the npm tarball. Prefiltering the diffuse environment and
-using a fine interpolation pass plus extra smoothing avoids the softbox-grid
-aliasing and coarse interpolation diamonds seen with a raw 1k HDRI.
-Environment orientation, intensity, validation and lifecycle are covered by
-headless WebGL2 tests. The future `lightmapper-wasm/bake` promotion (AD-018)
-must preserve the environment input.
+**Consequences.** The showcase gains `hdri-studio` and `hdri-outdoor` scenarios
+and an `environment` section; the harness keeps its display-agnostic boundary;
+the display gains an equirectangular background path; and the assets are
+site-only and excluded from the npm tarball. Prefiltering the diffuse
+environment and using a fine interpolation pass plus twelve smoothing passes
+avoids the softbox/sun-grid aliasing and coarse interpolation diamonds seen
+with raw 1k HDRIs. Environment orientation, intensity, validation and lifecycle
+are covered by headless WebGL2 tests. The future `lightmapper-wasm/bake`
+promotion (AD-018) must preserve the environment input.

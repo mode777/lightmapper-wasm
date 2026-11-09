@@ -144,8 +144,8 @@ The display layer uses the full-resolution decoded array to create a
 wrapping, the supported filter and `scene.backgroundIntensity = intensity`.
 The display texture is owned by the display and disposed with it. The bake
 receives a separate 128 × 64 box-filtered and blurred irradiance copy; a raw
-1k studio HDRI contains a high-frequency softbox diffusion grid that aliases
-badly when captured into a 32–128 px hemisphere.
+1k studio or outdoor HDRI contains high-frequency softbox, sun or cloud detail
+that aliases badly when captured into a 32–128 px hemisphere.
 
 Alternatives considered:
 
@@ -186,22 +186,27 @@ Alternatives considered:
 - Store a raw float `.bin` instead of a `.hdr`. Rejected: loses the standard
   HDR format, provenance and common tooling.
 
-### D5 — Poly Haven `studio_small_09` as the checked-in asset
+### D5 — Two checked-in Poly Haven assets
 
-The scenario uses Poly Haven's CC0 `studio_small_09` HDRI at 1k:
+The studio scenario uses Poly Haven's CC0 `studio_small_09` HDRI at 1k:
 `https://polyhaven.com/a/studio_small_09`, author Sergej Majboroda. The 1k HDR
 is 1,615,248 bytes with MD5 `d5d7eb9d26d341d6aa4d11c1a54fd97c` and is served by
 the URL returned from `https://api.polyhaven.com/files/studio_small_09`
 (`hdri["1k"].hdr.url`). It is a neutral studio with large softboxes, which
 gives the scene directional soft light without an outdoor sun.
 
-The asset is checked in at
-`site/src/assets/environments/studio_small_09_1k.hdr`. A sibling
-`README.md` records the Poly Haven asset page, API endpoint, author, CC0
-license, byte size, MD5 and the bottom-up runtime convention.
-`site/scripts/fetch-hdri.mjs` resolves the URL through the API, verifies the
-size/MD5 and writes the file; it is a developer command, not a CI step. The
-built site serves the asset from its own origin and never fetches Poly Haven.
+The outdoor scenario uses Poly Haven's CC0 `kloofendal_48d_partly_cloudy` 1k
+HDRI: `https://polyhaven.com/a/kloofendal_48d_partly_cloudy`, author Greg Zaal.
+The file is 1,637,206 bytes with MD5 `ee096fe9e26ce29d8f110b5ba0579011`. It is
+a high-contrast midday sky with a sun, scattered cumulus clouds and grassy,
+rocky hills.
+
+Both assets are checked in under `site/src/assets/environments/`. A sibling
+`README.md` records the Poly Haven asset pages, API endpoints, authors, CC0
+licenses, byte sizes, MD5s and the bottom-up runtime convention.
+`site/scripts/fetch-hdri.mjs` resolves each URL through the API, verifies the
+size/MD5 and writes the files; it is a developer command, not a CI step. The
+built site serves the assets from its own origin and never fetches Poly Haven.
 
 Alternatives considered:
 
@@ -216,20 +221,22 @@ Alternatives considered:
   problem, a later change can add a deterministic downsampler with its own
   tests.
 
-### D6 — `hdri-studio` scenario and `environment` section
+### D6 — `hdri-studio`, `hdri-outdoor` and the `environment` section
 
-Add `hdri-studio` as the fifth catalog scenario. It uses a small studio set
-built from the existing geometry helpers: floor, back wall, a pedestal, a
-sphere, a box and a torus, all `kind: "lit"`, with no emissive meshes and a
-black ambient color. The bake preset uses a 512² atlas, H32, two bounces,
-`zNear`/`zFar` 0.01/40, the usual dilation and `environment.intensity` 1.0.
-The loader prefilters the HDR to a 128 × 64 irradiance copy for the bake.
-The preset uses `interpolationPasses: 1`, `interpolationThreshold: 0.5` and
-`smoothPasses: 4`. Four coarse passes (16-texel steps) produced large diamond
-artifacts on the walls and floor, and a very low threshold made the bake
-impractically slow under SwiftShader; one fine pass plus the prefiltered
-environment and extra smoothing keeps the preview bake in the smoke-test
-budget while removing the visible pattern.
+Add two catalog scenarios. `hdri-studio` uses a small studio set built from the
+existing geometry helpers: floor, back wall, a pedestal, a sphere, a box and a
+torus, all `kind: "lit"`, with no emissive meshes and a black ambient color.
+`hdri-outdoor` uses a ground plane, a low stone wall, a plinth, a sphere, a
+box, a torus, a post and a bench against the daytime sky. Both use a 512²
+atlas, H32, two bounces, `zNear`/`zFar` 0.01/40 or 0.01/50, the usual dilation
+and `environment.intensity` 1.0. The loader prefilters each HDR to a 128 × 64
+irradiance copy for the bake. Both presets use `interpolationPasses: 1`,
+`interpolationThreshold: 0.5` and `smoothPasses: 12`. Four coarse passes
+(16-texel steps) produced large diamond artifacts on the walls and floor, and a
+very low threshold made the bake impractically slow under SwiftShader; one fine
+pass plus the prefiltered environment and twelve smoothing passes keeps the
+preview bake in the smoke-test budget while removing the visible pattern and
+most of the residual wall/ground mottling.
 
 The scene metadata and bake preset gain an optional environment descriptor:
 
@@ -244,7 +251,7 @@ interface SceneEnvironment {
 bake scene and display; `toBakeScene` receives the decoded environment and
 passes it through. `SceneSection` gains `"environment"`, `SECTIONS` gains a
 matching filter label/description, and `EXPECTED_SCENARIO_IDS` gains
-`"hdri-studio"`.
+`"hdri-studio"` and `"hdri-outdoor"`.
 
 Alternatives considered:
 
@@ -298,8 +305,8 @@ The key environment checks are:
 - an invalid environment is rejected with a message naming the environment;
 - the per-side ray helper maps NDC top to world +Y for a known view, so an
   orientation regression fails independently of the bake;
-- the HDRI studio page completes a preview bake and requests the HDRI from the
-  site origin, not Poly Haven;
+- both HDRI pages complete a preview bake and request their HDRI from the site
+  origin, not Poly Haven;
 - the display background uses the same texture, mapping, color space and
   intensity, and disposes it.
 
@@ -318,16 +325,16 @@ The key environment checks are:
 - **The HDRI is too bright or too dark for the lightmap** → a scene-level
   intensity multiplier plus ACES tone mapping in the display; verify finite
   statistics and a useful thumbnail.
-- **A raw studio HDRI aliases its softbox grid and exposes the lightmapper's
-  coarse hierarchical interpolation grid** → prefilter the bake environment,
-  use one fine interpolation pass and extra smoothing for `hdri-studio`; the
-  preview bake and stage capture are part of the smoke test so the pattern is
-  visible in review.
+- **A raw studio or outdoor HDRI aliases its high-frequency lighting detail and
+  exposes the lightmapper's coarse hierarchical interpolation grid** →
+  prefilter the bake environment, use one fine interpolation pass and extra
+  smoothing for both environment scenarios; the preview bake and stage capture
+  are part of the smoke test so the pattern is visible in review.
 - **HDR radiance makes a very low interpolation threshold impractically slow**
   → expose `interpolationPasses`/`interpolationThreshold`/`smoothPasses` on
-  `BakeOptions`; the HDRI preset uses a prefiltered environment, 1 pass, 0.5
-  threshold and 4 smoothing passes, which completes the preview in about 87
-  seconds on the verification box.
+  `BakeOptions`; both HDRI presets use a prefiltered environment, 1 pass, 0.5
+  threshold and 12 smoothing passes, which keep the preview bakes within the
+  smoke-test budget on the verification box.
 - **Two WebGL2 contexts plus a 1k float texture per context increase memory
   use** → the display and harness contexts already exist; the environment adds
   roughly 16 MB for the HDRI scene and both textures are disposed with their
@@ -345,10 +352,11 @@ The key environment checks are:
 ## Migration Plan
 
 This is additive and site-only. No package entry, loader, wasm artifact, C
-contract or release workflow changes. The checked-in HDRI is emitted by the
+contract or release workflow changes. The checked-in HDRIs are emitted by the
 existing site build and deployed with the existing Pages job. Rollback is
-removing the `hdri-studio` scenario, the environment module and the asset; the
-four existing scenarios, the package and the C library remain unchanged.
+removing the `hdri-studio` and `hdri-outdoor` scenarios, the environment module
+and the assets; the existing non-environment scenarios, the package and the C
+library remain unchanged.
 
 The prerequisite `add-showcase-site` change was archived before this proposal,
 so the delta specs modify the established `bake-harness`, `showcase-site` and
@@ -368,17 +376,18 @@ Add **AD-017 — HDRI environment baking in the showcase** to
 > equirectangular HDR environment, draws it as a fullscreen skybox for every
 > lightmapper hemisphere side before scene geometry, and uses the full decoded
 > data as a linear equirectangular three.js background. The bake receives a
-> prefiltered 128 × 64 irradiance copy of the same source. The environment asset
-> is a checked-in CC0 Poly Haven HDRI with recorded provenance and a developer
-> refresh script; the site does not fetch it at runtime. No C header, wasm
-> build, loader or package API changes.
+> prefiltered 128 × 64 irradiance copy of the same source. The environment
+> assets are checked-in CC0 Poly Haven HDRIs with recorded provenance and a
+> developer refresh script; the site does not fetch them at runtime. No C
+> header, wasm build, loader or package API changes.
 >
-> **Consequences.** The showcase gains an `hdri-studio` scenario and an
-> `environment` section; the harness keeps its display-agnostic boundary; the
-> display gains an equirectangular background path; and the asset is site-only
-> and excluded from the npm tarball. Prefiltering the diffuse environment and
-> using a fine interpolation pass plus extra smoothing avoids the softbox-grid
-> aliasing and coarse interpolation diamonds seen with a raw 1k HDRI.
+> **Consequences.** The showcase gains `hdri-studio` and `hdri-outdoor`
+> scenarios and an `environment` section; the harness keeps its
+> display-agnostic boundary; the display gains an equirectangular background
+> path; and the assets are site-only and excluded from the npm tarball.
+> Prefiltering the diffuse environment and using a fine interpolation pass plus
+> extra smoothing avoids the softbox/sun-grid aliasing and coarse interpolation
+> diamonds seen with raw 1k HDRIs.
 > Environment orientation, intensity, validation and lifecycle are covered by
 > headless WebGL2 tests. The future `lightmapper-wasm/bake` promotion (AD-018)
 > must preserve the environment input.
@@ -402,8 +411,8 @@ root `README.md` showcase section and `site/README.md` in the same task.
 - `CHROME_SHELL_PATH=… npm run test:harness --prefix site` (environment-only,
   black environment, intensity, invalid input, ray orientation, display
   background)
-- `CHROME_SHELL_PATH=… npm run test:smoke --prefix site` (five scenarios,
-  attribution/no featured link, HDRI studio preview, HDRI failure route, no
+- `CHROME_SHELL_PATH=… npm run test:smoke --prefix site` (six scenarios,
+  attribution/no featured link, both HDRI previews, HDRI failure route, no
   external Poly Haven request)
 - `SITE_BASE=/lightmapper-wasm/ npm run build --prefix site`
 - `SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site` (`.hdr`,

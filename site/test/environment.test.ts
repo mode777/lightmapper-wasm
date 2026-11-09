@@ -16,6 +16,9 @@ import {
 const HDRI_PATH = fileURLToPath(
   new URL("../src/assets/environments/studio_small_09_1k.hdr", import.meta.url)
 );
+const OUTDOOR_HDRI_PATH = fileURLToPath(
+  new URL("../src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr", import.meta.url)
+);
 
 function environment(overrides: Partial<BakeEnvironment> = {}): BakeEnvironment {
   return {
@@ -100,18 +103,25 @@ describe("environment rays", () => {
   });
 });
 
-describe("checked-in HDRI", () => {
-  it("is the expected 1k Radiance file", () => {
-    const bytes = readFileSync(HDRI_PATH);
-    expect(bytes.byteLength).toBe(1_615_248);
-    expect(createHash("md5").update(bytes).digest("hex")).toBe(
-      "d5d7eb9d26d341d6aa4d11c1a54fd97c"
-    );
-    const header = bytes.subarray(0, 2048).toString("latin1");
-    expect(header).toContain("#?RADIANCE");
-    expect(header).toContain("FORMAT=32-bit_rle_rgbe");
-    expect(header).toMatch(/-Y\s+512\s+\+X\s+1024/);
-  });
+describe("checked-in HDRIs", () => {
+  for (const asset of [
+    { path: HDRI_PATH, size: 1_615_248, md5: "d5d7eb9d26d341d6aa4d11c1a54fd97c" },
+    {
+      path: OUTDOOR_HDRI_PATH,
+      size: 1_637_206,
+      md5: "ee096fe9e26ce29d8f110b5ba0579011"
+    }
+  ]) {
+    it(`is the expected 1k Radiance file: ${asset.path.split("/").pop()}`, () => {
+      const bytes = readFileSync(asset.path);
+      expect(bytes.byteLength).toBe(asset.size);
+      expect(createHash("md5").update(bytes).digest("hex")).toBe(asset.md5);
+      const header = bytes.subarray(0, 2048).toString("latin1");
+      expect(header).toContain("#?RADIANCE");
+      expect(header).toContain("FORMAT=32-bit_rle_rgbe");
+      expect(header).toMatch(/-Y\s+512\s+\+X\s+1024/);
+    });
+  }
 
   it("flips Radiance top-down rows into the bottom-up runtime convention", () => {
     const top = [1, 1, 1, 1];

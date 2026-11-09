@@ -14,11 +14,29 @@
 The HDRI is checked in and served by the showcase from its own origin. The
 site never downloads it from Poly Haven at runtime.
 
+## kloofendal_48d_partly_cloudy_1k.hdr
+
+- **Source:** Poly Haven, <https://polyhaven.com/a/kloofendal_48d_partly_cloudy>
+- **API endpoint:** <https://api.polyhaven.com/files/kloofendal_48d_partly_cloudy>
+  (`hdri["1k"].hdr.url`)
+- **Author:** Greg Zaal
+- **License:** CC0 1.0 Universal (public-domain dedication)
+- **Downloaded size:** 1,637,206 bytes
+- **MD5:** `ee096fe9e26ce29d8f110b5ba0579011`
+- **Resolution:** 1024 × 512 (equirectangular Radiance RGBE)
+- **Content:** high-contrast midday sky with sun, scattered cumulus clouds and
+  grassy, rocky hills.
+
+The HDRI is checked in and served by the showcase from its own origin. The
+site never downloads it from Poly Haven at runtime.
+
 ## Refresh
 
 ```sh
-npm run fetch:hdri --prefix site -- --check   # verify the checked-in file
-npm run fetch:hdri --prefix site -- --force   # re-download and replace it
+npm run fetch:hdri --prefix site -- --check   # verify all checked-in HDRIs
+npm run fetch:hdri --prefix site -- --force   # re-download and replace all
+npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy
+npm run fetch:hdri --prefix site -- --force --asset=studio_small_09
 ```
 
 The script resolves the download URL through the Poly Haven API and verifies
@@ -37,5 +55,5 @@ three.js equirectangular background:
 
 The display reads the full normalized array. The bake uses a 128 × 64
 box-filtered and blurred irradiance copy of the same bottom-up data, which
-keeps the visible background sharp while avoiding softbox-grid aliasing in the
-diffuse lightmap. Both paths agree in orientation.
+keeps the visible background sharp while avoiding softbox/sun-grid aliasing in
+the diffuse lightmap. Both paths agree in orientation.

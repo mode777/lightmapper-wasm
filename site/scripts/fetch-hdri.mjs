@@ -1,10 +1,11 @@
-// Resolve and verify the checked-in Poly Haven HDRI.
+// Resolve and verify the checked-in Poly Haven HDRIs.
 //
 //   npm run fetch:hdri --prefix site -- --check
 //   npm run fetch:hdri --prefix site -- --force
+//   npm run fetch:hdri --prefix site -- --check --asset=studio_small_09
 //
-// --check is offline and only verifies the checked-in file. --force resolves
-// the 1k HDR URL through the Poly Haven API, downloads it, verifies the size
+// --check is offline and only verifies the checked-in files. --force resolves
+// each 1k HDR URL through the Poly Haven API, downloads it, verifies the size
 // and MD5 and only then replaces the checked-in asset.
 
 import { createHash } from "node:crypto";
@@ -12,92 +13,126 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ASSET_ID = "studio_small_09";
-const API_URL = `https://api.polyhaven.com/files/${ASSET_ID}`;
-const EXPECTED_SIZE = 1_615_248;
-const EXPECTED_MD5 = "d5d7eb9d26d341d6aa4d11c1a54fd97c";
 const SITE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DEST = join(SITE_ROOT, "src", "assets", "environments", `${ASSET_ID}_1k.hdr`);
+const DEST_DIR = join(SITE_ROOT, "src", "assets", "environments");
+
+const ASSETS = {
+  studio_small_09: {
+    size: 1_615_248,
+    md5: "d5d7eb9d26d341d6aa4d11c1a54fd97c",
+    file: "studio_small_09_1k.hdr"
+  },
+  kloofendal_48d_partly_cloudy: {
+    size: 1_637_206,
+    md5: "ee096fe9e26ce29d8f110b5ba0579011",
+    file: "kloofendal_48d_partly_cloudy_1k.hdr"
+  }
+};
 
 function usage() {
-  console.error(`usage: node scripts/fetch-hdri.mjs --check | --force
+  console.error(`usage: node scripts/fetch-hdri.mjs --check | --force [--asset=<id>]
 
-  --check   verify the checked-in ${ASSET_ID}_1k.hdr offline
-  --force   resolve ${API_URL}, download and replace the checked-in HDRI`);
+  --check   verify the checked-in HDRI(s) offline
+  --force   resolve the Poly Haven API, download and replace the HDRI(s)
+
+  assets: ${Object.keys(ASSETS).join(", ")}`);
+}
+
+function destination(asset) {
+  return join(DEST_DIR, asset.file);
 }
 
 function md5(bytes) {
   return createHash("md5").update(bytes).digest("hex");
 }
 
-function verify(bytes, label) {
-  if (bytes.byteLength !== EXPECTED_SIZE) {
-    throw new Error(
-      `${label}: expected ${EXPECTED_SIZE} bytes, got ${bytes.byteLength}`
-    );
+function verify(id, bytes, label) {
+  const expected = ASSETS[id];
+  if (bytes.byteLength !== expected.size) {
+    throw new Error(`${label}: expected ${expected.size} bytes, got ${bytes.byteLength}`);
   }
   const digest = md5(bytes);
-  if (digest !== EXPECTED_MD5) {
-    throw new Error(`${label}: expected MD5 ${EXPECTED_MD5}, got ${digest}`);
+  if (digest !== expected.md5) {
+    throw new Error(`${label}: expected MD5 ${expected.md5}, got ${digest}`);
   }
+}
+
+function selectedAssets() {
+  const id = [...process.argv.slice(2)]
+    .find((arg) => arg.startsWith("--asset="))
+    ?.slice("--asset=".length);
+  if (!id) return Object.keys(ASSETS);
+  if (!ASSETS[id]) throw new Error(`unknown HDRI asset: ${id}`);
+  return [id];
 }
 
 function check() {
-  if (!existsSync(DEST)) throw new Error(`checked-in HDRI is missing: ${DEST}`);
-  const bytes = readFileSync(DEST);
-  verify(bytes, DEST);
-  console.log(`[fetch-hdri] OK ${DEST} (${bytes.byteLength} bytes, MD5 ${EXPECTED_MD5})`);
+  for (const id of selectedAssets()) {
+    const path = destination(ASSETS[id]);
+    if (!existsSync(path)) throw new Error(`checked-in HDRI is missing: ${path}`);
+    const bytes = readFileSync(path);
+    verify(id, bytes, path);
+    console.log(`[fetch-hdri] OK ${path} (${bytes.byteLength} bytes, MD5 ${ASSETS[id].md5})`);
+  }
 }
 
 async function refresh() {
-  const response = await fetch(API_URL, {
-    headers: { accept: "application/json" }
-  });
-  if (!response.ok) {
-    throw new Error(`Poly Haven API ${API_URL} returned HTTP ${response.status}`);
-  }
-  const files = await response.json();
-  const url = files?.hdri?.["1k"]?.hdr?.url;
-  const apiSize = files?.hdri?.["1k"]?.hdr?.size;
-  if (typeof url !== "string" || !url.startsWith("https://")) {
-    throw new Error(`Poly Haven API response has no 1k HDR URL for ${ASSET_ID}`);
-  }
-  if (typeof apiSize === "number" && apiSize !== EXPECTED_SIZE) {
-    throw new Error(`Poly Haven API reports ${apiSize} bytes; expected ${EXPECTED_SIZE}`);
-  }
+  for (const id of selectedAssets()) {
+    const expected = ASSETS[id];
+    const apiUrl = `https://api.polyhaven.com/files/${id}`;
+    const response = await fetch(apiUrl, { headers: { accept: "application/json" } });
+    if (!response.ok) {
+      throw new Error(`Poly Haven API ${apiUrl} returned HTTP ${response.status}`);
+    }
+    const files = await response.json();
+    const url = files?.hdri?.["1k"]?.hdr?.url;
+    const apiSize = files?.hdri?.["1k"]?.hdr?.size;
+    if (typeof url !== "string" || !url.startsWith("https://")) {
+      throw new Error(`Poly Haven API response has no 1k HDR URL for ${id}`);
+    }
+    if (typeof apiSize === "number" && apiSize !== expected.size) {
+      throw new Error(`Poly Haven API reports ${apiSize} bytes; expected ${expected.size}`);
+    }
 
-  console.log(`[fetch-hdri] downloading ${url}`);
-  const download = await fetch(url);
-  if (!download.ok) {
-    throw new Error(`HDRI download ${url} returned HTTP ${download.status}`);
-  }
-  const bytes = new Uint8Array(await download.arrayBuffer());
-  verify(bytes, url);
+    console.log(`[fetch-hdri] downloading ${url}`);
+    const download = await fetch(url);
+    if (!download.ok) {
+      throw new Error(`HDRI download ${url} returned HTTP ${download.status}`);
+    }
+    const bytes = new Uint8Array(await download.arrayBuffer());
+    verify(id, bytes, url);
 
-  mkdirSync(dirname(DEST), { recursive: true });
-  const temp = `${DEST}.tmp`;
-  try {
-    writeFileSync(temp, bytes);
-    renameSync(temp, DEST);
-  } finally {
-    rmSync(temp, { force: true });
+    mkdirSync(DEST_DIR, { recursive: true });
+    const dest = destination(expected);
+    const temp = `${dest}.tmp`;
+    try {
+      writeFileSync(temp, bytes);
+      renameSync(temp, dest);
+    } finally {
+      rmSync(temp, { force: true });
+    }
+    console.log(`[fetch-hdri] wrote ${dest} (${bytes.byteLength} bytes, MD5 ${expected.md5})`);
   }
-  console.log(`[fetch-hdri] wrote ${DEST} (${bytes.byteLength} bytes, MD5 ${EXPECTED_MD5})`);
 }
 
 const args = new Set(process.argv.slice(2));
-const unknown = [...args].filter((arg) => arg !== "--check" && arg !== "--force");
-if (unknown.length > 0 || args.size > 1) {
+const unknown = [...args].filter(
+  (arg) => arg !== "--check" && arg !== "--force" && !arg.startsWith("--asset=")
+);
+if (unknown.length > 0 || (args.has("--check") && args.has("--force")) || (!args.has("--check") && !args.has("--force"))) {
   usage();
   process.exitCode = 2;
 } else if (args.has("--check")) {
   check();
-} else if (args.has("--force")) {
+} else {
+  try {
+    selectedAssets();
+  } catch (error) {
+    console.error(`[fetch-hdri] ${error.message}`);
+    process.exit(2);
+  }
   refresh().catch((error) => {
     console.error(`[fetch-hdri] ${error.stack || error}`);
     process.exitCode = 1;
   });
-} else {
-  usage();
-  process.exitCode = 2;
 }

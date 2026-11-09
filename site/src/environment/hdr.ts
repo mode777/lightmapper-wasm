@@ -98,18 +98,21 @@ export function prefilterEnvironment(
     }
   }
 
-  // A small separable [1 2 1] blur removes the remaining softbox grid pattern.
-  const weights = [1, 2, 1];
+  // A separable 5-tap Gaussian removes the remaining softbox grid, sun disc
+  // and cloud detail that would otherwise alias into the diffuse lightmap.
+  const weights = [1, 4, 6, 4, 1];
+  const weightSum = weights.reduce((total, weight) => total + weight, 0) ** 2;
+  const radius = 2;
   const blurred = new Float32Array(downsampled.length);
   for (let y = 0; y < targetHeight; y += 1) {
     for (let x = 0; x < targetWidth; x += 1) {
       const sum = [0, 0, 0, 0];
-      for (let ky = -1; ky <= 1; ky += 1) {
+      for (let ky = -radius; ky <= radius; ky += 1) {
         const sourceY = Math.min(targetHeight - 1, Math.max(0, y + ky));
-        for (let kx = -1; kx <= 1; kx += 1) {
+        for (let kx = -radius; kx <= radius; kx += 1) {
           const sourceX = (x + kx + targetWidth) % targetWidth;
           const source = (sourceY * targetWidth + sourceX) * 4;
-          const weight = weights[ky + 1] * weights[kx + 1];
+          const weight = weights[ky + radius] * weights[kx + radius];
           sum[0] += downsampled[source] * weight;
           sum[1] += downsampled[source + 1] * weight;
           sum[2] += downsampled[source + 2] * weight;
@@ -117,10 +120,10 @@ export function prefilterEnvironment(
         }
       }
       const target = (y * targetWidth + x) * 4;
-      blurred[target] = sum[0] / 16;
-      blurred[target + 1] = sum[1] / 16;
-      blurred[target + 2] = sum[2] / 16;
-      blurred[target + 3] = sum[3] / 16;
+      blurred[target] = sum[0] / weightSum;
+      blurred[target + 1] = sum[1] / weightSum;
+      blurred[target + 2] = sum[2] / weightSum;
+      blurred[target + 3] = sum[3] / weightSum;
     }
   }
 

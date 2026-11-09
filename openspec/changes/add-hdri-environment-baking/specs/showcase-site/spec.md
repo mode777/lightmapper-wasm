@@ -4,15 +4,15 @@
 
 ### Requirement: Gallery lists the scenario catalog
 
-The gallery SHALL list the five scenarios `ao-studio`, `cornell-box`,
-`emissive-alcove`, `tabletop-atlas` and `hdri-studio`. Each entry SHALL show a
-title, a short description, feature labels and technique sections, and SHALL
-link to a stable route. The gallery SHALL support filtering by section,
-including `environment`.
+The gallery SHALL list the six scenarios `ao-studio`, `cornell-box`,
+`emissive-alcove`, `tabletop-atlas`, `hdri-studio` and `hdri-outdoor`. Each
+entry SHALL show a title, a short description, feature labels and technique
+sections, and SHALL link to a stable route. The gallery SHALL support filtering
+by section, including `environment`.
 
 #### Scenario: Gallery renders
 - **WHEN** a visitor opens the site root
-- **THEN** all five catalog scenarios appear with their metadata
+- **THEN** all six catalog scenarios appear with their metadata
 
 #### Scenario: Deep link opens a scenario
 - **WHEN** a visitor opens a scenario route directly
@@ -34,8 +34,9 @@ including `environment`.
 
 The site test suite SHALL validate catalog metadata, scene and atlas geometry,
 source coverage and thumbnail coverage. A headless smoke bake SHALL cover the
-Cornell box, tabletop and HDRI studio scenes. A production build SHALL emit and
-reference the hashed `lightmapper.wasm`, `xatlas.wasm` and HDRI assets.
+Cornell box, tabletop, HDRI studio and HDRI outdoor scenes. A production build
+SHALL emit and reference the hashed `lightmapper.wasm`, `xatlas.wasm` and both
+HDRI assets.
 
 #### Scenario: Valid catalog
 - **WHEN** the site validation suite runs
@@ -46,8 +47,8 @@ reference the hashed `lightmapper.wasm`, `xatlas.wasm` and HDRI assets.
 - **THEN** the suite fails and names the scenario
 
 #### Scenario: Smoke bake completes
-- **WHEN** the headless smoke test opens the Cornell box, tabletop and HDRI studio preview routes
-- **THEN** all three bakes reach the done state with finite, non-zero lightmap statistics
+- **WHEN** the headless smoke test opens the Cornell box, tabletop, HDRI studio and HDRI outdoor preview routes
+- **THEN** all four bakes reach the done state with finite, non-zero lightmap statistics
 
 #### Scenario: Wasm assets are emitted and referenced
 - **WHEN** the site is built with `SITE_BASE=/lightmapper-wasm/`
@@ -119,26 +120,45 @@ ambient color and SHALL display the same HDRI as its scene background.
 - **WHEN** the HDRI studio demo page loads
 - **THEN** the 3D viewport uses the same HDRI as its background
 
+### Requirement: Outdoor HDRI scenario
+
+The showcase SHALL provide an `hdri-outdoor` scenario whose lit meshes are
+illuminated solely by a checked-in linear equirectangular daytime outdoor HDRI.
+The scenario SHALL declare no analytic lights and no emissive meshes, SHALL use
+a black ambient color and SHALL display the same daytime HDRI as its background.
+
+#### Scenario: Outdoor HDRI is in the catalog
+- **WHEN** the gallery is rendered
+- **THEN** `hdri-outdoor` appears with the environment section and a preview route
+
+#### Scenario: Daylight is the only light
+- **WHEN** the HDRI outdoor scene is baked
+- **THEN** its lightmap is non-black solely because of the daytime environment, with black ambient and no emissive meshes
+
+#### Scenario: Background shows the daytime sky
+- **WHEN** the HDRI outdoor demo page loads
+- **THEN** the 3D viewport uses the same daytime HDRI as its background
+
 ### Requirement: HDRI asset provenance and build
 
-The HDRI used by the showcase SHALL be a checked-in CC0 Poly Haven asset with
-its source, author and license recorded. A developer script SHALL resolve the
-asset through the Poly Haven API and verify its expected size or checksum. The
-site SHALL NOT fetch Poly Haven or another external host at runtime, and the
-production build SHALL emit and reference the checked-in HDRI asset.
+The HDRIs used by the showcase SHALL be checked-in CC0 Poly Haven assets with
+their sources, authors and licenses recorded. A developer script SHALL resolve
+each asset through the Poly Haven API and verify its expected size or checksum.
+The site SHALL NOT fetch Poly Haven or another external host at runtime, and
+the production build SHALL emit and reference the checked-in HDRI assets.
 
 #### Scenario: Provenance is recorded
 - **WHEN** the environment asset directory is inspected
-- **THEN** it contains the HDRI and a note naming Poly Haven, the asset id, the author and CC0
+- **THEN** it contains both HDRIs and a note naming Poly Haven, each asset id, author and CC0
 
 #### Scenario: Runtime is self-contained
-- **WHEN** the HDRI studio page loads from the built site
-- **THEN** the HDRI is served from the site origin and no request goes to Poly Haven
+- **WHEN** an HDRI demo page loads from the built site
+- **THEN** its HDRI is served from the site origin and no request goes to Poly Haven
 
 #### Scenario: Refresh script uses the API
 - **WHEN** the developer runs the HDRI refresh script
-- **THEN** it resolves the download URL through the Poly Haven API, verifies the asset and writes the checked-in file
+- **THEN** it resolves each download URL through the Poly Haven API, verifies the asset and writes the checked-in file
 
-#### Scenario: Production build emits the HDRI
+#### Scenario: Production build emits the HDRIs
 - **WHEN** the site is built with `SITE_BASE=/lightmapper-wasm/`
-- **THEN** the output contains the HDRI asset and the built JavaScript references it
+- **THEN** the output contains both HDRI assets and the built JavaScript references them

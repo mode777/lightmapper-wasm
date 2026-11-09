@@ -21,6 +21,7 @@ Cornell box is one catalog example, not a featured shortcut.
 | `emissive-alcove` | Arbitrary emissive geometry and HDR neon bars | 512² atlas, H64, 2 bounces, black ambient |
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
 | `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
+| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
 `multi-object`. “Shared atlas”, “xatlas” and “HDR” are feature labels because
@@ -62,8 +63,8 @@ run in headless Chrome with ANGLE SwiftShader: `test:harness` bakes a lit quad
 under an emissive ceiling, a two-object shared atlas and environment-only
 scenes, checks progress/cancellation and exercises the display
 texture/mode/background/disposal paths. `test:smoke` drives the gallery, the
-Cornell box, tabletop and HDRI studio preview routes, the tab views and the
-forced capability/asset failure routes.
+Cornell box, tabletop, HDRI studio and HDRI outdoor preview routes, the tab
+views and the forced capability/asset failure routes.
 
 ## Scene contract
 
@@ -126,41 +127,43 @@ triangles for every scenario.
 
 ## HDRI environments
 
-The `hdri-studio` scenario uses a checked-in 1k CC0 HDR from Poly Haven:
+The showcase has two environment-only scenarios, each using a checked-in 1k
+CC0 HDR from Poly Haven:
 
-- **Asset:** `studio_small_09` by Sergej Majboroda,
-  <https://polyhaven.com/a/studio_small_09>
-- **Local file:** `src/assets/environments/studio_small_09_1k.hdr`
-  (1,024 × 512, 1,615,248 bytes, MD5
-  `d5d7eb9d26d341d6aa4d11c1a54fd97c`)
-- **License:** CC0 1.0 Universal; provenance is recorded in
-  `src/assets/environments/README.md`
+| Scenario | Asset | Author | Local file |
+|---|---|---|---|
+| `hdri-studio` | `studio_small_09` | Sergej Majboroda | `src/assets/environments/studio_small_09_1k.hdr` |
+| `hdri-outdoor` | `kloofendal_48d_partly_cloudy` | Greg Zaal | `src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr` |
 
-Refresh and verify the asset:
+Provenance, sizes, MD5s and the Poly Haven API endpoints are recorded in
+`src/assets/environments/README.md`. Both assets are CC0 1.0.
+
+Refresh and verify the assets:
 
 ```sh
-npm run fetch:hdri --prefix site -- --check   # offline size/MD5 check
-npm run fetch:hdri --prefix site -- --force   # resolve via the Poly Haven API and replace
+npm run fetch:hdri --prefix site -- --check   # offline size/MD5 check for both
+npm run fetch:hdri --prefix site -- --force   # resolve via the Poly Haven API and replace both
+npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy
 ```
 
-The script resolves the download URL through
-`https://api.polyhaven.com/files/studio_small_09`. The site never fetches the
-HDRI from Poly Haven at runtime and CI never needs the network for it.
+The script resolves each download URL through the Poly Haven API. The site
+never fetches an HDRI from Poly Haven at runtime and CI never needs the network
+for them.
 
-The Radiance file is decoded once with three.js `HDRLoader` and flipped into
+Each Radiance file is decoded once with three.js `HDRLoader` and flipped into
 the bottom-up convention: row 0 is the south pole (`v = 0`) and the last row
 is the north pole (`v = 1`). The display background uses the full 1,024 × 512
 linear RGBA float data. The bake uses a 128 × 64 box-filtered and blurred
 **irradiance copy** of the same source. A raw studio HDRI contains a
-high-frequency softbox diffusion grid that aliases badly when captured into a
-32–128 px hemisphere, so prefiltering is the standard diffuse-lighting setup;
-the scene's intensity multiplier is applied separately by both paths.
+high-frequency softbox diffusion grid, and an outdoor sun/cloud sky has strong
+high-frequency detail too; both alias badly when captured into a 32–128 px
+hemisphere, so prefiltering is the standard diffuse-lighting setup. The
+scene's intensity multiplier is applied separately by both paths.
 
-The `hdri-studio` preset also uses one fine interpolation pass and four
-smoothing passes. The lightmapper's coarse hierarchical interpolation
-(otherwise four passes / 16-texel steps) produced large diamond artifacts on
-the walls and floor with this HDR content; the prefiltered environment plus a
-fine pass and extra smoothing removes that pattern.
+Both environment presets use one fine interpolation pass and twelve smoothing
+passes. The lightmapper's coarse hierarchical interpolation (four passes /
+16-texel steps) produced large diamond artifacts on the walls and floor, and
+the remaining stochastic mottling was reduced by the extra smoothing passes.
 
 ## Harness and display boundaries
 
@@ -256,7 +259,7 @@ catalog order; `--no-build` skips the Vite build when `site/dist` is current.
   affected thumbnails. `npm test --prefix site` fails on stale hashes.
 - A change to the viewport, lighting, materials or preview CSS can change the
   captured image without changing a scene source. Bump `PREVIEW_VERSION` in
-  `src/demos/coverage.ts` and recapture all five thumbnails.
+  `src/demos/coverage.ts` and recapture all six thumbnails.
 - Do not hand-edit the manifest or re-encode images outside the capture script.
 
 The gallery renders a CSS fallback (`src/styles.css`, `.card-fallback`) when an
