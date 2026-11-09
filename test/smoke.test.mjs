@@ -9,7 +9,7 @@
 // through strict context binding.
 
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -17,6 +17,7 @@ import { createLightmapperModule } from "../src/index.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WASM_MODULE_PATH = resolve(ROOT, "build/wasm/wasm/lightmapper_wasm.mjs");
+const WASM_BINARY_PATH = resolve(ROOT, "build/wasm/wasm/lightmapper_wasm.wasm");
 
 let passed = 0;
 let failed = 0;
@@ -38,8 +39,8 @@ function expectThrows(fn, matcher) {
 
 console.log("Lightmapper WASM smoke test");
 
-if (!existsSync(WASM_MODULE_PATH)) {
-  console.error(`FAIL missing WASM build: ${WASM_MODULE_PATH}`);
+if (!existsSync(WASM_MODULE_PATH) || !existsSync(WASM_BINARY_PATH)) {
+  console.error(`FAIL missing WASM build: ${WASM_MODULE_PATH} / ${WASM_BINARY_PATH}`);
   console.error("     Run `npm run configure:wasm && npm run build:wasm` first (requires emsdk).");
   process.exit(1);
 }
@@ -68,7 +69,11 @@ const lm = await createLightmapperModule({
   webglContext: stubWebGLContext,
   // Keep strict binding on, but never let Emscripten try to wrap the stub.
   autoRegisterEmscriptenContext: false,
-  moduleFactory
+  moduleFactory,
+  // The default build ships a separate .wasm asset and the loader skips asset
+  // resolution when a custom moduleFactory is supplied. Hand the factory the
+  // bytes directly: Node's fetch does not support file:// URLs.
+  wasmModuleOptions: { wasmBinary: new Uint8Array(readFileSync(WASM_BINARY_PATH)) }
 });
 
 console.log("Module initialized (capability check skipped, stub WebGL2 context).");

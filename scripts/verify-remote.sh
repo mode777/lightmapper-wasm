@@ -92,8 +92,13 @@ npm run configure:wasm
 # build:wasm is \`cmake --build build/wasm --config Release\`; npm forwards the
 # trailing args, so this caps the build at 3 jobs on the small remote box.
 npm run build:wasm -- -j3
+# build:dist needs both flavours: the default separate-asset build and the
+# opt-in single-file build behind lightmapper-wasm/single.
+npm run configure:wasm:single
+npm run build:wasm:single -- -j3
 npm run build:dist
 npm test
+npm run test:dist
 
 export CHROME_SHELL_PATH="\${CHROME_SHELL_PATH:-${REMOTE_CHROME}}"
 if [ "\${UPDATE_GOLDEN:-0}" = "1" ]; then
