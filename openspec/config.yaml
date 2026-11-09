@@ -1,0 +1,94 @@
+schema: spec-driven
+
+context: |
+  Repo purpose: `lightmapper-wasm` is the browser-facing WebAssembly product
+  around ands/lightmapper. It owns the Emscripten CMake target, the C shim,
+  the low-level JavaScript API, the WebGL2 context/registration layer, the
+  browser demo, the npm package, the build-dist step and the release workflow.
+
+  The C library is the upstream submodule `thirdparty/lightmapper`
+  (`mode777/lightmapper`). Changes to `lightmapper.h` are proposed and
+  implemented upstream and are marked `[lightmapper]` in this repository. The
+  wrapper consumes them by bumping the submodule and re-running the
+  verification suite. The canonical planning documents live here:
+  `docs/wasm-improvements.md` (findings and change sequence) and
+  `docs/decisions.md` (ADR log).
+
+  Current package behavior (v0.1.2): browser-first ESM, main-thread only
+  (`-sENVIRONMENT=web`), wasm built with `-sSINGLE_FILE=1` and embedded as a
+  base64 data URI inside `dist/index.js`; no separate `.wasm` asset is emitted.
+  `createLightmapperModule` probes `EXT_color_buffer_float` and RGBA32F
+  readback, registers the caller's WebGL2 context with Emscripten, and
+  enforces strict context binding. There are no rendering tests yet; CI builds,
+  typechecks and publishes.
+
+  Targets: WebGL2 / OpenGL ES 3.0 in modern browsers. Emscripten is pinned to
+  3.1.64 for reproducible builds (the current CI still installs `latest`; this
+  is a known gap). The wasm path requires `EXT_color_buffer_float` because the
+  lightmapper renders to and reads back RGBA32F render targets. The reference
+  wasm build is single-threaded: no pthreads, shared memory or SIMD.
+
+  Known defects and gaps are catalogued in `docs/wasm-improvements.md`:
+  the upstream first-pass shader miscalculates GLES3 sample coordinates; the
+  wrapper build is unoptimised (no `CMAKE_BUILD_TYPE`); the wasm is inlined
+  instead of being a loadable asset; docs advertise a `.wasm` artifact that is
+  not produced; the TypeScript declarations are handwritten; and the package
+  has no smoke/golden/package tests.
+
+  Constraints: keep the package ESM-only and browser-first; do not add a
+  runtime dependency; keep the public low-level C-shaped API and the
+  `createLightmapperModule` entry point; do not claim Node rendering support
+  without a real WebGL2 implementation.
+
+# Per-artifact rules
+rules:
+  proposal:
+    - State whether the change introduces, alters, or reverses a decision in
+      docs/decisions.md, citing the ADR IDs it implements or supersedes.
+    - Do not contradict an Accepted ADR. If a change needs to reverse one,
+      supersede it in the same change and add the new ADR.
+    - Name the owning repository for every work item. Upstream C changes are
+      tagged `[lightmapper]`; this repository is the default owner.
+    - State explicit out-of-scope items, especially Node rendering, native GL,
+      npm publishing mechanics and C-side rendering behavior not touched.
+  design:
+    - Ground the design in docs/decisions.md and cite ADR IDs instead of
+      restating decisions.
+    - Add or update an ADR entry in docs/decisions.md for every new or changed
+      decision; use a new sequential ID and mark superseded decisions.
+    - Update docs/wasm-improvements.md when a roadmap item changes status, and
+      update any baseline document the change makes stale.
+    - Include a verification strategy that can run without a physical GPU
+      (headless Chrome/ANGLE SwiftShader) for anything that affects rendering,
+      packaging or loading.
+  specs:
+    - Describe observable behavior and requirements; keep rationale and
+      trade-offs in the design document and ADR log.
+    - 'Preserve the existing capability paths: wasm-build-pipeline covers the
+      CMake/Emscripten artifact; wasm-loader covers initialization, context
+      registration and module loading; npm-package covers the published
+      artifact; c-library-port covers the upstream WebGL2 contract.'
+  tasks:
+    - Include an explicit task to update docs/decisions.md and
+      docs/wasm-improvements.md whenever a decision or roadmap status changes.
+    - Include verification tasks for shader sampling, build artifact layout,
+      loader behavior and package consumption as applicable.
+    - Mark upstream C tasks as [lightmapper] and do not claim they were
+      completed in this repository; include the submodule bump that consumes
+      them.
+
+# Per-operation guidance
+operations:
+  apply:
+    guidance:
+      - Verify the build artifact layout after every packaging change; the
+        current SINGLE_FILE build has no .wasm and the planned separate-asset
+        build must actually emit one.
+      - Keep the WebGL2 capability probe and strict context binding intact
+        unless the proposal explicitly covers them.
+  archive:
+    guidance:
+      - Confirm docs/decisions.md and docs/wasm-improvements.md describe the
+        implemented state, not the planned state.
+      - Confirm every [lightmapper] dependency is completed or explicitly left
+        open, and that the submodule pointer matches the consumed commit.

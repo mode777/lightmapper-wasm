@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "status": "Finished baking 730 triangles (1 bounce).",
+  "errors": [],
+  "before": {
+    "width": 1024,
+    "height": 768,
+    "min": 0,
+    "max": 235,
+    "unique": 235,
+    "mean": 112.9
+  },
+  "after": {
+    "width": 1024,
+    "height": 768,
+    "min": 17,
+    "max": 235,
+    "unique": 219,
+    "mean": 131.31
+  }
+}
