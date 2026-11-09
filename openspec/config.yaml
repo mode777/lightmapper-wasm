@@ -14,26 +14,26 @@ context: |
   `docs/wasm-improvements.md` (findings and change sequence) and
   `docs/decisions.md` (ADR log).
 
-  Current package behavior (v0.1.2): browser-first ESM, main-thread only
-  (`-sENVIRONMENT=web`), wasm built with `-sSINGLE_FILE=1` and embedded as a
-  base64 data URI inside `dist/index.js`; no separate `.wasm` asset is emitted.
-  `createLightmapperModule` probes `EXT_color_buffer_float` and RGBA32F
-  readback, registers the caller's WebGL2 context with Emscripten, and
-  enforces strict context binding. There are no rendering tests yet; CI builds,
-  typechecks and publishes.
+  Current package behavior: browser-first ESM, main-thread only
+  (`-sENVIRONMENT=web`). The default entry `dist/index.js` ships a separate
+  `dist/lightmapper.wasm` fetched at initialization (with `wasmBinary` and
+  `locateWasm` escape hatches); the `lightmapper-wasm/single` entry embeds the
+  wasm as a base64 payload. `createLightmapperModule` probes
+  `EXT_color_buffer_float` and RGBA32F readback, registers the caller's WebGL2
+  context with Emscripten, and enforces strict context binding. CI builds both
+  flavours, typechecks, runs the Node smoke test and headless Chrome golden
+  bake on every push to `Main`, and publishes on release.
 
   Targets: WebGL2 / OpenGL ES 3.0 in modern browsers. Emscripten is pinned to
-  3.1.64 for reproducible builds (the current CI still installs `latest`; this
-  is a known gap). The wasm path requires `EXT_color_buffer_float` because the
+  3.1.64 for reproducible builds, and local scripts and CI reject other
+  versions. The wasm path requires `EXT_color_buffer_float` because the
   lightmapper renders to and reads back RGBA32F render targets. The reference
   wasm build is single-threaded: no pthreads, shared memory or SIMD.
 
-  Known defects and gaps are catalogued in `docs/wasm-improvements.md`:
-  the upstream first-pass shader miscalculates GLES3 sample coordinates; the
-  wrapper build is unoptimised (no `CMAKE_BUILD_TYPE`); the wasm is inlined
-  instead of being a loadable asset; docs advertise a `.wasm` artifact that is
-  not produced; the TypeScript declarations are handwritten; and the package
-  has no smoke/golden/package tests.
+  Remaining defects and gaps are catalogued in `docs/wasm-improvements.md`;
+  the major packaging, build and sampling issues are fixed. Still open:
+  handwritten TypeScript declarations (generated declarations/ABI checks are
+  proposed), worker support, and broader capability-failure coverage.
 
   Constraints: keep the package ESM-only and browser-first; do not add a
   runtime dependency; keep the public low-level C-shaped API and the
