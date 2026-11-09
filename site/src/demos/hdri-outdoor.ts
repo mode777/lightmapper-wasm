@@ -36,6 +36,7 @@ export const hdriOutdoor: SceneDefinition = {
     bounces: 2,
     ambient: [0, 0, 0],
     environment: {
+      kind: "hdr",
       url: ENVIRONMENT_URL,
       intensity: 1
     },

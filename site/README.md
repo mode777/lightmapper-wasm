@@ -22,10 +22,12 @@ Cornell box is one catalog example, not a featured shortcut.
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
 | `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
 | `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
+| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, black ambient + procedural sky |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
-`multi-object`. “Shared atlas”, “xatlas” and “HDR” are feature labels because
-every scenario uses the same UV pipeline.
+`multi-object`. The `environment` section covers both checked-in HDRI and
+procedural-sky scenes. “Shared atlas”, “xatlas” and “HDR” are feature labels
+because every scenario uses the same UV pipeline.
 
 ## Local development
 
@@ -58,13 +60,15 @@ CHROME_SHELL_PATH=… npm run test:smoke --prefix site     # gallery, previews, 
 ```
 
 The Node suite covers catalog metadata, scene geometry, xatlas contracts, raw
-source coverage, HDRI provenance and checked-in thumbnails. The browser suites
-run in headless Chrome with ANGLE SwiftShader: `test:harness` bakes a lit quad
-under an emissive ceiling, a two-object shared atlas and environment-only
-scenes, checks progress/cancellation and exercises the display
-texture/mode/background/disposal paths. `test:smoke` drives the gallery, the
-Cornell box, tabletop, HDRI studio and HDRI outdoor preview routes, the tab
-views and the forced capability/asset failure routes.
+source coverage, HDRI provenance, procedural-sky generation/validation and
+checked-in thumbnails. The browser suites run in headless Chrome with ANGLE
+SwiftShader: `test:harness` bakes a lit quad under an emissive ceiling, a
+two-object shared atlas and environment-only scenes, checks the procedural
+sun's direction/intensity/occlusion behavior, checks progress/cancellation and
+exercises the display texture/mode/background/disposal paths. `test:smoke`
+drives the gallery, the Cornell box, tabletop, HDRI studio, HDRI outdoor and
+sun-and-sky outdoor preview routes, the tab views and the forced
+capability/asset failure routes.
 
 ## Scene contract
 
@@ -86,6 +90,7 @@ interface SceneDefinition {
     hemisphereSize: number; // power of two
     bounces: number;
     ambient: [number, number, number]; // linear
+    environment?: SceneEnvironment; // HDRI or procedural sky
     zNear?: number;
     zFar?: number;
     dilationPasses?: number;
@@ -127,8 +132,10 @@ triangles for every scenario.
 
 ## HDRI environments
 
-The showcase has two environment-only scenarios, each using a checked-in 1k
-CC0 HDR from Poly Haven:
+The showcase has two HDRI environment-only scenarios, each using a checked-in
+1k CC0 HDR from Poly Haven. A third environment-only scenario,
+`sun-sky-outdoor`, uses a generated procedural sky instead of a file; see the
+next subsection.
 
 | Scenario | Asset | Author | Local file |
 |---|---|---|---|
@@ -160,10 +167,44 @@ high-frequency detail too; both alias badly when captured into a 32–128 px
 hemisphere, so prefiltering is the standard diffuse-lighting setup. The
 scene's intensity multiplier is applied separately by both paths.
 
-Both environment presets use one fine interpolation pass and twelve smoothing
-passes. The lightmapper's coarse hierarchical interpolation (four passes /
-16-texel steps) produced large diamond artifacts on the walls and floor, and
-the remaining stochastic mottling was reduced by the extra smoothing passes.
+Both HDRI presets use one fine interpolation pass and twelve smoothing passes.
+The lightmapper's coarse hierarchical interpolation (four passes / 16-texel
+steps) produced large diamond artifacts on the walls and floor, and the
+remaining stochastic mottling was reduced by the extra smoothing passes.
+
+### Procedural sun-and-sky environment
+
+`sun-sky-outdoor` does not load a file. Its scene environment is a
+`SceneEnvironment` with `kind: "sky"` and these fields:
+
+```ts
+interface ProceduralSky {
+  zenith: [number, number, number];  // linear
+  horizon: [number, number, number]; // linear
+  ground: [number, number, number];  // linear
+  intensity?: number;                // default 1
+  width?: number;                    // default 512
+  height?: number;                   // default 256
+  sun: {
+    direction: [number, number, number]; // world-space, surface -> sun; normalized
+    color: [number, number, number];     // linear radiance in the disk
+    angularRadius: number;               // radians, (0, PI / 2)
+    intensity?: number;                  // default 1
+  };
+}
+```
+
+`src/environment/sky.ts` generates bottom-up linear RGBA float data from the
+gradient and the sun disk. Row 0 is the south pole (`v = 0`) and the last row is
+the north pole (`v = 1`), matching the HDRI contract. The sun is a soft-edged
+disk at `sun.direction`; because the lightmapper integrates the caller-drawn
+environment, it acts as the scene's directional light and is occluded by scene
+geometry. The same data feeds the bake and the display background, so the
+visible sun and the baked shadows agree. The generator validates its descriptor
+and reuses `validateBakeEnvironment`; it never fetches an asset. The
+`sun-sky-outdoor` preset uses a 1024 × 512 environment, a `0.06` rad sun disk,
+black ambient and four smoothing passes; its standard quality is H64 and the
+preview uses the draft H32 preset.
 
 ## Harness and display boundaries
 
@@ -220,8 +261,9 @@ Each route (`#/p/<id>`) has three tabs:
 
 Switching tabs never re-bakes. `#/p/<id>?preview=1` hides the header, tabs,
 aside, meta bar and footer, fixes the stage to 16:10 and bakes at draft quality
-(draft hemisphere size, one bounce, atlas capped at 512²). The capture script
-uses this mode.
+(draft hemisphere size, one bounce, atlas capped at 512²; the heavier
+`sun-sky-outdoor` preview caps its atlas at 256²). The capture script uses this
+mode.
 
 ## Thumbnails
 
@@ -257,9 +299,11 @@ catalog order; `--no-build` skips the Vite build when `site/dist` is current.
 - A scene module change (`src/demos/<id>.ts`, `geometry.ts`, `types.ts` or
   `sections.ts`) changes that source hash and requires recapturing the
   affected thumbnails. `npm test --prefix site` fails on stale hashes.
+- The `sun-sky-outdoor` hash also includes `src/environment/sky.ts`; changing
+  the procedural generator requires recapturing that thumbnail.
 - A change to the viewport, lighting, materials or preview CSS can change the
   captured image without changing a scene source. Bump `PREVIEW_VERSION` in
-  `src/demos/coverage.ts` and recapture all six thumbnails.
+  `src/demos/coverage.ts` and recapture all seven thumbnails.
 - Do not hand-edit the manifest or re-encode images outside the capture script.
 
 The gallery renders a CSS fallback (`src/styles.css`, `.card-fallback`) when an

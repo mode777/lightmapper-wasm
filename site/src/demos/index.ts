@@ -4,6 +4,7 @@ import { emissiveAlcove } from "./emissive-alcove";
 import { validateGeometry } from "./geometry";
 import { hdriOutdoor } from "./hdri-outdoor";
 import { hdriStudio } from "./hdri-studio";
+import { sunSkyOutdoor } from "./sun-sky-outdoor";
 import { tabletopAtlas } from "./tabletop-atlas";
 import type { SceneDefinition, SceneMesh } from "./types";
 
@@ -13,7 +14,8 @@ export const SCENARIOS: readonly SceneDefinition[] = [
   emissiveAlcove,
   tabletopAtlas,
   hdriStudio,
-  hdriOutdoor
+  hdriOutdoor,
+  sunSkyOutdoor
 ];
 
 export const SCENARIO_BY_ID: ReadonlyMap<string, SceneDefinition> = new Map(

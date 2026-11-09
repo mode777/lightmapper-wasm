@@ -1,0 +1,41 @@
+# Tasks
+
+## 1. Environment contract and procedural sky generator
+
+- [x] 1.1 Replace the URL-only `SceneEnvironment` in `site/src/demos/types.ts` with the discriminated `kind: "hdr"` / `kind: "sky"` union from design D2, and add `kind: "hdr"` to `hdri-studio` and `hdri-outdoor`. Verify: `npm run check --prefix site` and `npm test --prefix site` pass, and a descriptor without a valid `kind` fails typecheck.
+- [x] 1.2 Add `site/src/environment/sky.ts` with the `ProceduralSky`/`ProceduralSun` descriptors, bottom-up linear RGBA generation, zenith/horizon/ground gradient, soft-edged sun disk, descriptor validation, and `createProceduralSkyEnvironment` returning the existing `LoadedEnvironment` shape. Reuse `createEnvironmentTexture` and `validateBakeEnvironment`; do not add a dependency or fetch an asset. Verify: a new unit test checks the configured dimensions and data length, row 0 as the south pole and the last row as the north pole, the sun center at the declared direction, determinism for identical input, finite non-negative values and no `.hdr` URL.
+- [x] 1.3 Add unit cases for invalid procedural-sky dimensions, colors, intensity, zero/non-finite sun direction and out-of-range angular radius. Verify: `npm test --prefix site` rejects each case with an error naming the invalid field, and `validateBakeEnvironment` accepts the generated result.
+- [x] 1.4 Document the procedural-sky descriptor, bottom-up orientation, sun parameters, display/bake sharing and no-external-asset rule in the environment section of `site/README.md`. Verify: the documented shape matches the code and the documented site test command runs as written.
+
+## 2. Sun-and-sky scene, catalog and thumbnails
+
+- [x] 2.1 Add `site/src/demos/sun-sky-outdoor.ts` as a non-HDRI courtyard with lit meshes only, black ambient, no emissive meshes, a procedural sky environment and a low warm sun disk. Use the design's initial `512²` atlas, `H64`, two-bounce preset, `zNear`/`zFar` 0.01/50, one fine interpolation pass, `0.5` threshold and four smoothing passes. Verify: `npm test --prefix site` validates the scene geometry, the xatlas `[0,1)` UV contract and a non-empty atlas for the new scene; `npm run check --prefix site` passes.
+- [x] 2.2 Register the scene in `site/src/demos/index.ts`, `sources.ts` and `coverage.ts`, broaden the `environment` section label/description in `sections.ts` to cover checked-in HDRI and procedural skies, and update the gallery hero copy from six to seven scenes. Verify: `npm test --prefix site` passes the catalog, source and section-coverage tests, and `npm run check --prefix site` passes.
+- [x] 2.3 Add `src/environment/sky.ts` to the `sun-sky-outdoor` extra source files in `site/scripts/source-hash.mjs`, and extend `site/test/thumbnails.test.ts` to assert the generator is hashed and the new scene does not include either checked-in HDRI. Verify: changing the generator source in a temporary test edit changes the computed hash, and the thumbnail test passes.
+- [x] 2.4 Recapture all seven thumbnails and update `site/src/assets/previews/manifest.json`, including the new `sun-sky-outdoor.webp`. Inspect the new image for a visible sun disk and directional shadows. Verify: `npm test --prefix site` passes the manifest order, dimensions, source-hash and orphan-image checks; record that `PREVIEW_VERSION` stays 1 because preview viewport, lighting, materials and CSS are unchanged.
+- [x] 2.5 Update the scenario table and prose in `site/README.md` and the showcase list in the root `README.md` from six to seven scenarios, naming `sun-sky-outdoor` and its procedural-sky/directional-sun technique. Verify: both documents list all seven scenarios and no longer claim six or four.
+
+## 3. Demo-page integration and browser checks
+
+- [x] 3.1 Update `site/src/demo-page.ts` to resolve `kind: "hdr"` through `loadHdrEnvironment` and `kind: "sky"` through `createProceduralSkyEnvironment`, pass the generated texture to the display and the generated `BakeEnvironment` to `toBakeScene`, and show an environment error if generation fails. Keep the forced `?fail=hdri` route working for HDRI scenes. Verify: `npm run check --prefix site` passes and the new preview route reaches `data-bake-state="done"` in the smoke test.
+- [x] 3.2 Extend `site/test/harness-page.ts` with procedural-sky checks: a sun above the horizon lights an up-facing surface, a sun below the horizon or an absent sun leaves only sky fill, a higher sun intensity raises radiance, and a wall occludes the sun. Reuse the generator and the existing environment scene helper. Verify: `CHROME_SHELL_PATH=… npm run test:harness --prefix site` passes all checks and the existing environment/display checks stay green.
+- [x] 3.3 Update `site/scripts/bake-smoke.mjs` to expect seven gallery cards, an environment filter with the two HDRI scenes plus `sun-sky-outdoor`, and a preview bake for the new route. Assert the new route requests no `.hdr` file and still covers the Code/Atlas tabs and the existing failure routes. Verify: `CHROME_SHELL_PATH=… npm run test:smoke --prefix site` passes.
+- [x] 3.4 Update the test-coverage prose in `site/README.md` for the new harness and smoke checks. Verify: the documented commands match the scripts and the section names the procedural-sky coverage.
+
+## 4. Production layout and planning baseline
+
+- [x] 4.1 Update `site/scripts/check-build.mjs` only where needed to keep the existing hashed `lightmapper.wasm`, `xatlas.wasm` and HDRI assertions, and add an assertion that the procedural scene contributes no environment file asset. Verify: `SITE_BASE=/lightmapper-wasm/ npm run build --prefix site` and `SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site` pass.
+- [x] 4.2 Add the `add-sun-sky-outdoor-lighting` roadmap row and update the showcase subsection of `docs/wasm-improvements.md` from six to seven scenarios with the procedural-sky/directional-sun description. Update the showcase sentence in `openspec/config.yaml` the same way. Confirm `docs/decisions.md` needs no new ADR: this implements AD-017's environment contract with generated data and must not rewrite the accepted ADR entries or the reserved AD-018/AD-019 references. Verify: the docs describe seven scenarios and the procedural sky, `docs/decisions.md` still ends at the existing ADR set, and `npx @fission-ai/openspec@latest validate --all --strict` passes.
+
+## 5. Integration verification
+
+- [x] 5.1 Run `npm run check --prefix site`, `npm test --prefix site`, `CHROME_SHELL_PATH=… npm run test:harness --prefix site`, `CHROME_SHELL_PATH=… npm run test:smoke --prefix site`, and both `SITE_BASE=/lightmapper-wasm/` build commands. Verify: every command is green, the new preview bake has finite non-zero statistics, and no existing preview or failure route regressed.
+- [x] 5.2 Run `npm run verify:remote` before pushing to `Main`. Verify: the root tests, golden bake and site suites are green; no root golden data or wasm artifact changes because this is a site-only scene/content change.
+- [x] 5.3 Confirm the change did not touch the package, loader, C library or published artifact: inspect `git diff --stat` for `thirdparty/lightmapper`, `src/`, `types/`, `wasm/`, `scripts/build-dist.mjs`, `package.json` and the workflow, and run `npm run test:dist`. Verify: those paths are unchanged and `test:dist` passes; `test:loader` and `test:consumer` are unaffected because no loader or package entry changed.
+- [x] 5.4 Run `npx @fission-ai/openspec@latest validate --all --strict` and `npx @fission-ai/openspec@latest status --change add-sun-sky-outdoor-lighting`. Verify: validation passes and the planning artifacts report complete.
+
+## Workflow follow-up
+
+- Archive `add-hdri-environment-baking` before this change so the main spec has the six-scenario catalog requirement before this change replaces it with the seven-scenario version.
+- Archive this change only after implementation and the full verification pipeline are green; at archive time confirm `docs/decisions.md` and `docs/wasm-improvements.md` describe the implemented state and the checked-in thumbnails match their source hashes.
+- No upstream `[lightmapper]` task is required and no submodule bump is part of this change; the sun and sky are caller-drawn environment data, not C-side rendering behavior.

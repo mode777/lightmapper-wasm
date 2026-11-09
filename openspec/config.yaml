@@ -26,13 +26,15 @@ context: |
 
   The public showcase lives under `site/` (AD-015): a private Vite + TypeScript
   consumer that links this checkout with `lightmapper-wasm: file:..`, is not in
-  the npm tarball and adds no runtime dependency. It has six procedural
+  the npm tarball and adds no runtime dependency. It has seven procedural
   scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
-  `hdri-studio`, `hdri-outdoor`) and a site-local, package-shaped raw-WebGL
-  bake harness plus a three.js display layer. The harness supports an optional
-  linear equirectangular HDRI that is drawn as the bake skybox and used as the
-  display background (AD-017); the `hdri-studio` and `hdri-outdoor` scenarios
-  use checked-in CC0 Poly Haven assets. The harness and display are planned for
+  `hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and a site-local,
+  package-shaped raw-WebGL bake harness plus a three.js display layer. The
+  harness supports an optional linear equirectangular environment that is
+  drawn as the bake skybox and used as the display background (AD-017); the
+  `hdri-studio` and `hdri-outdoor` scenarios use checked-in CC0 Poly Haven
+  assets, while `sun-sky-outdoor` generates a procedural gradient and sun disk
+  at runtime with no asset request. The harness and display are planned for
   promotion as `lightmapper-wasm/bake` (AD-018) and `lightmapper-wasm/three`
   (AD-019); until then they stay under `site/src/bake/` and
   `site/src/display/`. Every lit mesh uses one xatlas atlas with a `[0,1)` UV

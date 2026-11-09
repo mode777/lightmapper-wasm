@@ -91,12 +91,13 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   `npm run test:consumer` cover the dist layout, loader scenarios and a Vite
   6.4.5 consumer (F5, F12 packaging).
 - The public showcase lives under `site/` and consumes the tested `dist`
-  artifact with `lightmapper-wasm: file:..` (AD-015). It has six procedural
+  artifact with `lightmapper-wasm: file:..` (AD-015). It has seven procedural
   scenarios, an xatlas-everywhere UV pipeline with the `[0,1)` clamp (AD-016),
-  an HDRI environment path for the bake skybox and display background (AD-017),
-  a display-agnostic raw-WebGL bake harness, a three.js display layer,
-  checked-in thumbnails and a `Main`-only Pages deployment. The harness and
-  display stay site-local until `promote-bake-harness` and `add-three-adapter`.
+  an environment path for the bake skybox and display background (AD-017) that
+  accepts checked-in HDRIs and generated procedural skies, a display-agnostic
+  raw-WebGL bake harness, a three.js display layer, checked-in thumbnails and a
+  `Main`-only Pages deployment. The harness and display stay site-local until
+  `promote-bake-harness` and `add-three-adapter`.
 
 ### 3.2 What is missing or wrong
 
@@ -433,13 +434,16 @@ are the intended kebab-case change names.
 | 9 | `wasm-release-docs` | both | 1–8 | Proposed | CHANGELOG, tag gate, docs, vendor pin, example cleanup |
 | 10 | `add-showcase-site` (AD-015, AD-016) | this repo | 5 | Implemented | Gallery, xatlas-everywhere UVs, bake harness, three.js display, Pages deploy |
 | 11 | `add-hdri-environment-baking` (AD-017) | this repo | 10 | Implemented (two 1k Poly Haven HDRIs) | Environment skybox, studio and outdoor HDRI scenarios |
-| 12 | `promote-bake-harness` (AD-018) | this repo | 10, 11 | Planned | `lightmapper-wasm/bake` package entry |
-| 13 | `add-three-adapter` (AD-019) | this repo | 12 | Planned | Optional `lightmapper-wasm/three` package entry |
+| 12 | `add-sun-sky-outdoor-lighting` | this repo | 10, 11 | Implemented (procedural sky + sun disk) | Non-HDRI outdoor scenario with a directional sun and generated sky |
+| 13 | `promote-bake-harness` (AD-018) | this repo | 10, 11, 12 | Planned | `lightmapper-wasm/bake` package entry |
+| 14 | `add-three-adapter` (AD-019) | this repo | 13 | Planned | Optional `lightmapper-wasm/three` package entry |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
 fix. Changes 4 and 5 are implemented here; changes 6–8 remain proposed. Change
-9 spans both and is the final documentation/release gate.
+9 spans both and is the final documentation/release gate. Changes 10–12 are the
+implemented showcase sequence; changes 13–14 are the planned harness/display
+promotions.
 
 ---
 
@@ -737,14 +741,14 @@ multi-object/shared-atlas workflow with a reusable bake path.
 **Why:** there was no gallery and every demo repeated the same GL setup,
 lightmap allocation, bounce loop and readback plumbing.
 
-**Scope:** `site/` (gallery, six scenarios, xatlas unwrap, raw-WebGL bake
+**Scope:** `site/` (gallery, seven scenarios, xatlas unwrap, raw-WebGL bake
 harness, three.js display, preview/atlas/code views, thumbnails and tests),
 the build workflow's dist artifact, a site job and a `Main`-only Pages deploy.
 
 **Acceptance:**
 - `ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
-  `hdri-studio` and `hdri-outdoor` build procedurally and share the catalog
-  metadata contract.
+  `hdri-studio`, `hdri-outdoor` and `sun-sky-outdoor` build procedurally and
+  share the catalog metadata contract.
 - Every lit mesh is packed into one xatlas atlas; positions/normals are copied
   through `xref`; normalized UVs are clamped below `1.0`; emitters are not in
   the atlas.
@@ -811,7 +815,8 @@ package changes.
   twelve smoothing passes, verified by a headless stage capture.
 - The site emits and references both hashed HDRIs, and never requests Poly
   Haven at runtime.
-- The gallery lists six scenarios with an `environment` filter, attributes
+- The gallery lists seven scenarios with an `environment` filter (including
+  the two HDRI scenarios and the procedural-sky scenario), attributes
   `lightmapper.h` with an upstream link, and does not feature an individual
   scenario in the global navigation or hero.
 
@@ -824,6 +829,62 @@ package changes.
 **ADR footprint:** adds AD-017 (HDRI environment baking in the showcase);
 implements AD-015/AD-016 and AD-009 and respects AD-006/AD-013. It does not
 supersede an accepted ADR.
+
+### 7.12 `add-sun-sky-outdoor-lighting` — this repo (implemented)
+
+**Status:** Implemented. The showcase has a seventh scenario,
+`sun-sky-outdoor`, which uses a generated linear equirectangular procedural sky
+instead of a checked-in HDRI. The sky is a zenith/horizon/ground gradient with
+a soft-edged sun disk; the sun disk provides the directional direct light and
+shadows, and the gradient provides sky fill. The scene has black ambient and no
+emissive meshes, and the environment is generated deterministically at runtime
+with no asset request. The `environment` section now covers both checked-in
+HDRI and procedural-sky scenes.
+
+**Goal:** prove a non-HDRI outdoor workflow and give the gallery a directional
+sun-and-sky reference.
+
+**Why:** the environment path was only exercised with Radiance files, while a
+generated sky is the lightweight alternative when an HDRI is too large,
+unavailable or unnecessary.
+
+**Scope:** `site/src/environment/sky.ts` (procedural descriptor, validation,
+bottom-up RGBA generation, sun disk, display texture), `site/src/demos/types.ts`
+(the `kind: "hdr"` / `kind: "sky"` environment union), `site/src/demo-page.ts`
+(environment-kind resolution), `site/src/demos/sun-sky-outdoor.ts`, the
+`environment` section text, catalog/source/coverage registration, generator and
+scene tests, harness/smoke checks, thumbnails, README and this roadmap. No C,
+package, loader or build-workflow changes.
+
+**Acceptance:**
+- The gallery lists seven scenarios and `sun-sky-outdoor` appears in the
+  environment filter with a preview route and thumbnail.
+- The scene has lit meshes only, black ambient and no checked-in HDRI; a bake
+  is non-black because of the generated sky and sun, and the page requests no
+  `.hdr` file.
+- The generator writes bottom-up linear RGBA data with the zenith at the top
+  row, the ground at the bottom row and a bright sun disk at the declared
+  direction; identical descriptors produce identical data; invalid dimensions,
+  colors, intensities, directions and angular radii are rejected with a clear
+  field name.
+- The same data feeds the bake and the display background. A sun above the
+  horizon lights an up-facing surface, a sun below the horizon leaves only sky
+  fill, higher sun intensity raises radiance, and scene geometry occludes the
+  sun disk.
+- The production build still emits and references the hashed
+  `lightmapper.wasm`, `xatlas.wasm` and both HDRI assets, and the procedural
+  scene adds no file asset.
+
+**Verification:** `npm run check --prefix site`, `npm test --prefix site`,
+`npm run test:harness --prefix site`, `npm run test:smoke --prefix site`,
+`SITE_BASE=/lightmapper-wasm/ npm run build --prefix site`,
+`SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site`, thumbnail
+capture and `npm run verify:remote`.
+
+**ADR footprint:** implements AD-017's environment contract with generated
+data and implements AD-015/AD-016 and AD-009; it respects AD-006/AD-013. It
+adds no ADR and does not supersede one. AD-018/AD-019 remain reserved for the
+harness/display promotions.
 
 ---
 
@@ -869,12 +930,15 @@ release artifact and a golden test on top of. The third change,
 `wasm-release-build`, is implemented with a 44,136-byte wasm. The fifth
 change, `separate-wasm-loader`, is implemented with the same 44,136-byte wasm
 shipped as a separate asset beside the default entry plus a `./single`
-embedded entry. Change 10, `add-showcase-site`, is implemented with the six
+embedded entry. Change 10, `add-showcase-site`, is implemented with the seven
 scenarios, the xatlas-everywhere pipeline, the bake harness/display and the
 Pages deployment. Change 11, `add-hdri-environment-baking`, is implemented with
 the environment skybox, `hdri-studio`, `hdri-outdoor`, the checked-in Poly
-Haven assets and the attribution/navigation copy. The next planned change in the showcase sequence
-is `promote-bake-harness`; `worker-support` remains an independent open item.
+Haven assets and the attribution/navigation copy. Change 12,
+`add-sun-sky-outdoor-lighting`, is implemented with the procedural-sky
+generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog. The
+next planned changes in the showcase sequence are `promote-bake-harness` and
+`add-three-adapter`; `worker-support` remains an independent open item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a
 `[lightmapper]` task here) and mirror the status in this roadmap. This repo’s

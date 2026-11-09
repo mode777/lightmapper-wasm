@@ -3,6 +3,7 @@ import cornellBoxSource from "./cornell-box.ts?raw";
 import emissiveAlcoveSource from "./emissive-alcove.ts?raw";
 import hdriOutdoorSource from "./hdri-outdoor.ts?raw";
 import hdriStudioSource from "./hdri-studio.ts?raw";
+import sunSkyOutdoorSource from "./sun-sky-outdoor.ts?raw";
 import tabletopAtlasSource from "./tabletop-atlas.ts?raw";
 
 /** Exact scene module source shown by the Code view. */
@@ -12,7 +13,8 @@ export const SCENE_SOURCES: Readonly<Record<string, string>> = {
   "emissive-alcove": emissiveAlcoveSource,
   "tabletop-atlas": tabletopAtlasSource,
   "hdri-studio": hdriStudioSource,
-  "hdri-outdoor": hdriOutdoorSource
+  "hdri-outdoor": hdriOutdoorSource,
+  "sun-sky-outdoor": sunSkyOutdoorSource
 };
 
 export function sourceFor(id: string): string | undefined {

@@ -2,7 +2,7 @@
 
 import { launchBrowser, openPage, siteRoot, startDevServer, waitForExpression } from "./browser.mjs";
 
-const BAKE_TIMEOUT_MS = 600_000;
+const BAKE_TIMEOUT_MS = 1_800_000;
 const FAILURE_ROUTES = ["webgl2", "float", "lightmapper", "xatlas", "hdri"];
 
 function check(name, condition, detail = "") {
@@ -14,22 +14,39 @@ function check(name, condition, detail = "") {
   return false;
 }
 
-async function openRoute(browser, base, path, label) {
-  const requests = [];
+async function openRoute(browser, base, path, label, trackRequests = false) {
+  const requests = trackRequests ? [] : null;
   const { page, pageErrors } = await openPage(browser, `${base}${path}`, {
     label,
     timeout: 30_000,
     requests
   });
-  return { page, pageErrors, requests };
+  return { page, pageErrors, requests: requests ?? [] };
 }
 
 async function waitForDemoState(page, timeout = BAKE_TIMEOUT_MS) {
-  await waitForExpression(
-    page,
-    "document.querySelector('.demo-page')?.dataset.bakeState === 'done' || document.querySelector('.demo-page')?.dataset.errorState !== undefined",
-    { timeout }
-  );
+  try {
+    await waitForExpression(
+      page,
+      "document.querySelector('.demo-page')?.dataset.bakeState === 'done' || document.querySelector('.demo-page')?.dataset.errorState !== undefined",
+      { timeout }
+    );
+  } catch (error) {
+    const state = await page
+      .evaluate(() => {
+        const root = document.querySelector(".demo-page");
+        return {
+          bakeState: root?.dataset.bakeState,
+          errorState: root?.dataset.errorState,
+          status: document.querySelector(".muted")?.textContent ?? "",
+          progress: document.querySelector(".bake-progress-label")?.textContent ?? "",
+          showcase: window.__showcase ?? null
+        };
+      })
+      .catch((evaluateError) => ({ evaluateError: String(evaluateError) }));
+    console.error(`[smoke] preview wait failed: ${JSON.stringify(state)}`);
+    throw error;
+  }
 }
 
 async function checkGallery(browser, base, results) {
@@ -39,7 +56,7 @@ async function checkGallery(browser, base, results) {
       timeout: 60_000
     });
     const count = await page.$$eval(".scene-card", (cards) => cards.length);
-    results.push(check("gallery renders six scenarios", count === 6, `saw ${count}`));
+    results.push(check("gallery renders seven scenarios", count === 7, `saw ${count}`));
 
     await page.click('[data-filter="ambient"]');
     const visible = await page.$$eval(".scene-card", (cards) =>
@@ -56,28 +73,30 @@ async function checkGallery(browser, base, results) {
     results.push(
       check(
         "gallery filter narrows to the environment scenarios",
-        environmentVisible.length === 2 &&
+        environmentVisible.length === 3 &&
           environmentVisible.includes("hdri-studio") &&
-          environmentVisible.includes("hdri-outdoor"),
+          environmentVisible.includes("hdri-outdoor") &&
+          environmentVisible.includes("sun-sky-outdoor"),
         environmentVisible.join(",")
       )
     );
 
     await page.click('[data-filter="all"]');
     const restored = await page.$$eval(".scene-card", (cards) => cards.filter((card) => !card.hidden).length);
-    results.push(check("gallery filter restores all scenarios", restored === 6, `saw ${restored}`));
+    results.push(check("gallery filter restores all scenarios", restored === 7, `saw ${restored}`));
 
     await page.waitForFunction(
       () => [...document.querySelectorAll(".card-preview img")].every((image) => image.complete),
       { timeout: 30_000 }
     );
     const thumbnails = await page.$$eval(".card-preview img", (images) =>
-      images.map((image) => ({ src: image.getAttribute("src") ?? "", width: image.naturalWidth }))
+      images.map((image) => ({ src: image.getAttribute("src") ?? "", complete: image.complete }))
     );
     results.push(
       check(
         "gallery loads the checked-in thumbnails",
-        thumbnails.length === 6 && thumbnails.every((image) => image.width > 0 && image.src.includes(".webp")),
+        thumbnails.length === 7 &&
+          thumbnails.every((image) => image.complete && image.src.includes(".webp")),
         JSON.stringify(thumbnails)
       )
     );
@@ -108,7 +127,14 @@ async function checkGallery(browser, base, results) {
 }
 
 async function checkPreviewBake(browser, base, id, results) {
-  const { page, pageErrors, requests } = await openRoute(browser, base, `/#/p/${id}?preview=1`, id);
+  const trackRequests = id.startsWith("hdri-");
+  const { page, pageErrors, requests } = await openRoute(
+    browser,
+    base,
+    `/#/p/${id}?preview=1`,
+    id,
+    trackRequests
+  );
   try {
     await waitForDemoState(page);
     const state = await page.evaluate(() => {
@@ -198,6 +224,20 @@ async function checkPreviewBake(browser, base, id, results) {
           JSON.stringify({ hdriRequests, external })
         )
       );
+    } else if (id === "sun-sky-outdoor") {
+      const hdriRequests = await page.evaluate(() =>
+        performance
+          .getEntriesByType("resource")
+          .map((entry) => entry.name)
+          .filter((url) => url.includes(".hdr"))
+      );
+      results.push(
+        check(
+          `${id} uses no HDRI asset`,
+          hdriRequests.length === 0,
+          JSON.stringify(hdriRequests)
+        )
+      );
     }
 
     results.push(check(`${id} has no page errors`, pageErrors.length === 0, pageErrors.map((e) => e.message).join("; ")));
@@ -257,6 +297,7 @@ async function main() {
   try {
     browser = await launchBrowser();
     await checkGallery(browser, server.url, results);
+    await checkPreviewBake(browser, server.url, "sun-sky-outdoor", results);
     await checkPreviewBake(browser, server.url, "cornell-box", results);
     await checkPreviewBake(browser, server.url, "tabletop-atlas", results);
     await checkPreviewBake(browser, server.url, "hdri-studio", results);

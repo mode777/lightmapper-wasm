@@ -129,6 +129,15 @@ describe("thumbnail manifest", () => {
     expect(sourceHash("hdri-studio")).not.toBe(sourceHash("hdri-outdoor"));
   });
 
+  it("includes the procedural generator and no HDRI for sun-sky-outdoor", () => {
+    const studio = "src/assets/environments/studio_small_09_1k.hdr";
+    const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
+    expect(sourceFilesFor("sun-sky-outdoor")).toContain("src/environment/sky.ts");
+    expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(studio);
+    expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(outdoor);
+    expect(sourceHash("sun-sky-outdoor")).not.toBe(sourceHash("hdri-outdoor"));
+  });
+
   it("has no orphan thumbnail images", () => {
     const referenced = new Set(Object.values(manifest.scenarios).map((entry) => entry.file));
     const images = readdirSync(PREVIEW_DIR).filter((file) => file.endsWith(".webp"));

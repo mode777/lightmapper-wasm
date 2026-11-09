@@ -14,8 +14,9 @@ export const SECTIONS: readonly SectionInfo[] = [
   },
   {
     id: "environment",
-    label: "HDRI environment",
-    description: "Bakes lit only by a linear equirectangular HDR environment."
+    label: "Environment",
+    description:
+      "Bakes lit by a linear equirectangular environment: a checked-in HDRI or a generated procedural sky."
   },
   {
     id: "gi",

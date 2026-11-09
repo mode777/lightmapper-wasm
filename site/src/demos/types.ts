@@ -1,13 +1,20 @@
+import type { ProceduralSky } from "../environment/sky";
+
 export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";
 
 export type Vec3 = [number, number, number];
 
-export interface SceneEnvironment {
+export interface HdrSceneEnvironment {
+  kind: "hdr";
   /** Vite-resolved local `.hdr` URL. */
   url: string;
   /** Linear radiance multiplier used by the bake and the display background. */
   intensity: number;
 }
+
+export type SceneEnvironment =
+  | HdrSceneEnvironment
+  | ({ kind: "sky" } & ProceduralSky);
 
 export interface SceneCamera {
   position: Vec3;

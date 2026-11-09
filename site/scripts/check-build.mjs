@@ -117,6 +117,20 @@ check("emits both checked-in HDRI assets", () => {
   }
 });
 
+check("builds the procedural sun-and-sky scene without an environment file", () => {
+  if (hdriFiles.length !== HDRI_ASSETS.length) {
+    throw new Error(
+      `expected exactly ${HDRI_ASSETS.length} .hdr assets for the procedural scene, found ${hdriFiles.length}`
+    );
+  }
+  const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
+  if (scripts.length === 0) throw new Error("no JavaScript was emitted");
+  const source = scripts.map((file) => readFileSync(file, "utf8")).join("\n");
+  if (!source.includes("sun-sky-outdoor")) {
+    throw new Error("built JavaScript does not reference the sun-sky-outdoor scenario");
+  }
+});
+
 check("built JavaScript references both wasm assets", () => {
   const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
   if (scripts.length === 0) throw new Error("no JavaScript was emitted");

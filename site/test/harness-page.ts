@@ -12,6 +12,7 @@ import {
 import { ThreeDisplay } from "../src/display/three";
 import { createLightmapTexture, lightmapFilterFor } from "../src/display/materials";
 import { createEnvironmentTexture } from "../src/environment/hdr";
+import { generateProceduralSky, type ProceduralSky } from "../src/environment/sky";
 import type { UnwrappedObject, UnwrappedScene } from "../src/atlas/types";
 
 interface CheckResult {
@@ -216,6 +217,24 @@ function topBottomEnvironment(
   return { width, height, data, intensity: 1 };
 }
 
+function proceduralSky(overrides: Partial<ProceduralSky> = {}): ProceduralSky {
+  return {
+    width: 64,
+    height: 32,
+    zenith: [0, 0, 0],
+    horizon: [0, 0, 0],
+    ground: [0, 0, 0],
+    intensity: 1,
+    sun: {
+      direction: [0, 1, 0],
+      color: [8, 8, 8],
+      angularRadius: 0.2,
+      intensity: 1
+    },
+    ...overrides
+  };
+}
+
 function environmentOnlyScene(environment: BakeEnvironment, size = 4): BakeScene {
   return {
     atlas: { width: 64, height: 64 },
@@ -346,6 +365,114 @@ async function main(): Promise<void> {
       }
       assert(error, "invalid environment was accepted");
       assert(errorMessage(error).includes("environment"), "error does not name the environment");
+    });
+
+    await checkAsync("lights an up-facing surface with a procedural sun above the horizon", async () => {
+      const sunUp = generateProceduralSky(
+        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
+      );
+      const sunDown = generateProceduralSky(
+        proceduralSky({ sun: { direction: [0, -1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
+      );
+      const up = await harness!.bake(environmentOnlyScene(sunUp), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      const down = await harness!.bake(environmentOnlyScene(sunDown), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      assert(up.stats.max > 0.01, "procedural sun above the horizon produced no light");
+      assert(
+        down.stats.max < up.stats.max * 0.05,
+        `sun below the horizon leaked light: ${down.stats.max} vs ${up.stats.max}`
+      );
+      assert(harness!.gl.getError() === harness!.gl.NO_ERROR, "GL error after procedural sun bake");
+    });
+
+    await checkAsync("leaves only sky fill when the procedural sun is below the horizon", async () => {
+      const gradient: Partial<ProceduralSky> = {
+        zenith: [0.2, 0.3, 0.5],
+        horizon: [0.3, 0.3, 0.3],
+        ground: [0, 0, 0]
+      };
+      const sunUp = generateProceduralSky(
+        proceduralSky({
+          ...gradient,
+          sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 }
+        })
+      );
+      const sunDown = generateProceduralSky(
+        proceduralSky({
+          ...gradient,
+          sun: { direction: [0, -1, 0], color: [8, 8, 8], angularRadius: 0.2 }
+        })
+      );
+      const up = await harness!.bake(environmentOnlyScene(sunUp), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      const down = await harness!.bake(environmentOnlyScene(sunDown), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      assert(down.stats.max > 0, "sky fill produced no light");
+      assert(
+        up.stats.max > down.stats.max * 1.2,
+        `sun above the horizon did not outshine sky fill: ${up.stats.max} vs ${down.stats.max}`
+      );
+    });
+
+    await checkAsync("scales procedural sun light with sun intensity", async () => {
+      const low = generateProceduralSky(
+        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
+      );
+      const high = generateProceduralSky(
+        proceduralSky({
+          sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2, intensity: 2 }
+        })
+      );
+      const lowResult = await harness!.bake(environmentOnlyScene(low), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      const highResult = await harness!.bake(environmentOnlyScene(high), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      assert(
+        highResult.stats.mean > lowResult.stats.mean,
+        "higher sun intensity did not increase radiance"
+      );
+    });
+
+    await checkAsync("occludes the procedural sun behind black geometry", async () => {
+      const sunUp = generateProceduralSky(
+        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
+      );
+      const open = await harness!.bake(environmentOnlyScene(sunUp, 2), {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      const scene = environmentOnlyScene(sunUp, 2);
+      scene.objects.push(emissiveSurface("black ceiling", -10, 10, -10, 10, 1.5, [0, 0, 0]));
+      const occluded = await harness!.bake(scene, {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0
+      });
+      assert(open.stats.max > 0, "open-sun reference produced no light");
+      assert(
+        occluded.stats.max < open.stats.max * 0.05,
+        `the ceiling did not occlude the sun: ${occluded.stats.max} vs ${open.stats.max}`
+      );
     });
 
     await checkAsync("recovers after cancelling an environment bake", async () => {

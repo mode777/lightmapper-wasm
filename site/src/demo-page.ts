@@ -18,6 +18,7 @@ import {
 } from "./bake/types";
 import { QUALITY_PRESETS, isQuality, PREVIEW_VERSION, type Quality } from "./demos/coverage";
 import { loadHdrEnvironment, type LoadedEnvironment } from "./environment/hdr";
+import { createProceduralSkyEnvironment } from "./environment/sky";
 import { sectionInfo } from "./demos/sections";
 import { sourceFor } from "./demos/sources";
 import type { SceneDefinition, SceneMesh } from "./demos/types";
@@ -31,6 +32,13 @@ hljs.registerLanguage("typescript", typescript);
 type Tab = "3d" | "atlas" | "code";
 type BakeState = "idle" | "baking" | "done" | "error";
 type FailureMode = "webgl2" | "float" | "lightmapper" | "xatlas" | "hdri";
+
+/** Preview routes cap the atlas at 512² by default. The procedural-sky scene
+ *  is much heavier on software WebGL2 and uses a 256² preview budget. */
+const PREVIEW_ATLAS_CAP = 512;
+const PREVIEW_ATLAS_CAPS: Record<string, number> = {
+  "sun-sky-outdoor": 256
+};
 
 interface ShowcaseDebug {
   id: string;
@@ -613,8 +621,11 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     try {
       // Preview captures keep the full scene but cap the atlas so the draft
       // bake stays fast on software WebGL2.
+      const previewAtlasCap = PREVIEW_ATLAS_CAPS[scenario.meta.id] ?? PREVIEW_ATLAS_CAP;
       unwrapped = await unwrapScene(scenario, {
-        atlasSize: preview ? Math.min(scenario.bake.atlasSize, 512) : scenario.bake.atlasSize
+        atlasSize: preview
+          ? Math.min(scenario.bake.atlasSize, previewAtlasCap)
+          : scenario.bake.atlasSize
       });
     } catch (error) {
       if (!disposed) {
@@ -629,13 +640,27 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     if (disposed) return;
 
     let loadedEnvironment: LoadedEnvironment | null = null;
-    if (scenario.bake.environment) {
+    const environmentDescriptor = scenario.bake.environment;
+    if (environmentDescriptor) {
       try {
-        loadedEnvironment = await loadHdrEnvironment(scenario.bake.environment.url, {
-          intensity: scenario.bake.environment.intensity
-        });
+        loadedEnvironment =
+          environmentDescriptor.kind === "hdr"
+            ? await loadHdrEnvironment(environmentDescriptor.url, {
+                intensity: environmentDescriptor.intensity
+              })
+            : createProceduralSkyEnvironment(environmentDescriptor);
       } catch (error) {
-        if (!disposed) showFailure("hdri", error);
+        if (!disposed) {
+          if (environmentDescriptor.kind === "hdr") {
+            showFailure("hdri", error);
+          } else {
+            showError(
+              "environment",
+              "Environment could not be generated",
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        }
         return;
       }
     }

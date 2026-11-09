@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SCENARIOS, validateScene } from "../src/demos";
 import { hdriOutdoor } from "../src/demos/hdri-outdoor";
 import { hdriStudio } from "../src/demos/hdri-studio";
+import { sunSkyOutdoor } from "../src/demos/sun-sky-outdoor";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
 import { validateGeometry } from "../src/demos/geometry";
 
@@ -33,8 +34,11 @@ describe("scene catalog validity", () => {
     expect(result.emissiveCount).toBe(0);
     expect(hdriStudio.bake.ambient).toEqual([0, 0, 0]);
     expect(hdriStudio.meta.sections).toEqual(["environment"]);
-    expect(hdriStudio.bake.environment?.url).toContain("studio_small_09_1k.hdr");
-    expect(hdriStudio.bake.environment?.intensity).toBeGreaterThan(0);
+    const studioEnvironment = hdriStudio.bake.environment;
+    expect(studioEnvironment?.kind).toBe("hdr");
+    if (studioEnvironment?.kind !== "hdr") throw new Error("hdri-studio needs an HDRI environment");
+    expect(studioEnvironment.url).toContain("studio_small_09_1k.hdr");
+    expect(studioEnvironment.intensity).toBeGreaterThan(0);
   });
 
   it("keeps hdri-outdoor environment-only with black ambient and no emitters", () => {
@@ -43,10 +47,33 @@ describe("scene catalog validity", () => {
     expect(result.emissiveCount).toBe(0);
     expect(hdriOutdoor.bake.ambient).toEqual([0, 0, 0]);
     expect(hdriOutdoor.meta.sections).toEqual(["environment"]);
-    expect(hdriOutdoor.bake.environment?.url).toContain(
-      "kloofendal_48d_partly_cloudy_1k.hdr"
-    );
-    expect(hdriOutdoor.bake.environment?.intensity).toBeGreaterThan(0);
+    const outdoorEnvironment = hdriOutdoor.bake.environment;
+    expect(outdoorEnvironment?.kind).toBe("hdr");
+    if (outdoorEnvironment?.kind !== "hdr") {
+      throw new Error("hdri-outdoor needs an HDRI environment");
+    }
+    expect(outdoorEnvironment.url).toContain("kloofendal_48d_partly_cloudy_1k.hdr");
+    expect(outdoorEnvironment.intensity).toBeGreaterThan(0);
+  });
+
+  it("keeps sun-sky-outdoor procedural, directional and emitter-free", () => {
+    const result = validateScene(sunSkyOutdoor);
+    expect(result.litCount).toBeGreaterThan(0);
+    expect(result.emissiveCount).toBe(0);
+    expect(sunSkyOutdoor.bake.ambient).toEqual([0, 0, 0]);
+    expect(sunSkyOutdoor.meta.sections).toEqual(["environment"]);
+
+    const environment = sunSkyOutdoor.bake.environment;
+    expect(environment?.kind).toBe("sky");
+    if (environment?.kind !== "sky") {
+      throw new Error("sun-sky-outdoor needs a procedural sky environment");
+    }
+    expect("url" in environment).toBe(false);
+    expect(environment.sun.direction.every(Number.isFinite)).toBe(true);
+    expect(Math.hypot(...environment.sun.direction)).toBeGreaterThan(0);
+    expect(environment.sun.color.every(Number.isFinite)).toBe(true);
+    expect(environment.sun.angularRadius).toBeGreaterThan(0);
+    expect(environment.sun.angularRadius).toBeLessThan(Math.PI / 2);
   });
 
   it("rejects non-finite geometry with the scene and mesh name", () => {
