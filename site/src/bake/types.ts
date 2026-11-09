@@ -84,6 +84,8 @@ export interface BakeOptions {
   zFar?: number;
   dilationPasses?: number;
   smooth?: boolean;
+  /** Number of box-smoothing passes after each bounce; defaults to 1. */
+  smoothPasses?: number;
   /** Hierarchical interpolation passes passed to lmCreate (0-8). */
   interpolationPasses?: number;
   /** Absolute radiance error below which lmCreate interpolates. */

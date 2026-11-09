@@ -772,7 +772,8 @@ AD-004, AD-006 and AD-009 and respects AD-013.
 
 **Status:** Implemented. The site-local harness accepts an optional linear
 equirectangular HDRI, draws it as a fullscreen skybox for every lightmapper
-hemisphere side, and shares the decoded data with the three.js background. The
+hemisphere side, and uses the full decoded data for the three.js background.
+The bake uses a 128 × 64 prefiltered irradiance copy of the same source. The
 checked-in asset is Poly Haven's CC0 `studio_small_09` 1k HDR; the site serves
 it from its own origin and the refresh script verifies its size/MD5 through
 the Poly Haven API.
@@ -784,10 +785,11 @@ technique.
 HDRI environments are the common way studio and product scenes are lit.
 
 **Scope:** `site/src/bake/` (environment input, shaders, ray helper, texture
-lifecycle, interpolation controls), `site/src/environment/hdr.ts` (HDRLoader
-decode, bottom-up normalization, display texture), `site/src/display/` (HDRI
-background), `site/src/demos/hdri-studio.ts`, the `environment` section, the
-gallery attribution/navigation copy, the checked-in HDRI and provenance, tests,
+lifecycle, interpolation and smoothing controls), `site/src/environment/hdr.ts`
+(HDRLoader decode, bottom-up normalization, prefiltered bake irradiance,
+full-resolution display texture), `site/src/display/` (HDRI background),
+`site/src/demos/hdri-studio.ts`, the `environment` section, the gallery
+attribution/navigation copy, the checked-in HDRI and provenance, tests,
 thumbnails, README/config/ADR updates. No C or package changes.
 
 **Acceptance:**
@@ -800,6 +802,9 @@ thumbnails, README/config/ADR updates. No C or package changes.
   cancellation.
 - `hdri-studio` has six lit meshes, no emitters, black ambient and a 512²/H32
   two-bounce preset; its preview bake completes in headless SwiftShader.
+- The raw 1k softbox grid does not produce large diamond artifacts: the bake
+  uses a prefiltered irradiance copy, one fine interpolation pass and four
+  smoothing passes, verified by a headless stage capture.
 - The site emits and references the hashed HDRI, and never requests Poly Haven
   at runtime.
 - The gallery lists five scenarios with an `environment` filter, attributes

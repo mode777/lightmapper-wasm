@@ -29,10 +29,12 @@ library it is built on and link to it.
   meshes; the environment is the only light source. Add an `environment`
   technique section to the gallery filters.
 - Decode the HDRI once in the site with three.js `HDRLoader` in `FloatType`
-  mode, normalize it to a bottom-up linear equirectangular buffer, and share
-  the same data between the bake harness and the three.js display background.
-  The display layer gains an equirectangular HDRI background path; it remains
-  bake-free.
+  mode, normalize it to a bottom-up linear equirectangular buffer, and use the
+  full-resolution data for the three.js display background. The bake uses a
+  prefiltered irradiance copy of the same source, which is the standard setup
+  for diffuse environment lighting and avoids aliasing the HDRI's softbox
+  diffusion grid at hemisphere resolution. The display layer gains an
+  equirectangular HDRI background path; it remains bake-free.
 - Check in the HDRI under `site/src/assets/environments/` with provenance and
   license notes. Add a developer script that resolves the 1k HDR download URL
   through the Poly Haven API, verifies the expected size/MD5 and refreshes the

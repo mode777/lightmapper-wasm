@@ -35,5 +35,7 @@ three.js equirectangular background:
 - the data is linear RGBA float radiance; the intensity multiplier is applied
   separately by the bake and display paths
 
-The bake harness and the display read the same normalized array, so the
-visible background and the baked environment agree in orientation.
+The display reads the full normalized array. The bake uses a 128 × 64
+box-filtered and blurred irradiance copy of the same bottom-up data, which
+keeps the visible background sharp while avoiding softbox-grid aliasing in the
+diffuse lightmap. Both paths agree in orientation.

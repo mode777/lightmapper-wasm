@@ -523,6 +523,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       bounces,
       dilationPasses: scenario.bake.dilationPasses,
       smooth: scenario.bake.smooth ?? true,
+      smoothPasses: scenario.bake.smoothPasses,
       interpolationPasses: scenario.bake.interpolationPasses,
       interpolationThreshold: scenario.bake.interpolationThreshold,
       zNear: scenario.bake.zNear,

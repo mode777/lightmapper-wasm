@@ -9,7 +9,8 @@ import { rayDirectionForNdc } from "../src/bake/environment";
 import {
   createEnvironmentTexture,
   flipRowsBottomUp,
-  loadHdrEnvironment
+  loadHdrEnvironment,
+  prefilterEnvironment
 } from "../src/environment/hdr";
 
 const HDRI_PATH = fileURLToPath(
@@ -123,6 +124,26 @@ describe("checked-in HDRI", () => {
     expect(() => flipRowsBottomUp(new Float32Array(4), 1, 2)).toThrow(
       /HDRI data length 4 does not match 1x2x4/
     );
+  });
+
+  it("builds a lower-resolution, bottom-up irradiance copy for the bake", () => {
+    const data = new Float32Array([
+      // bottom row: south pole
+      2, 2, 2, 1, 2, 2, 2, 1,
+      4, 4, 4, 1, 4, 4, 4, 1,
+      // top row: north pole
+      0, 0, 0, 1, 0, 0, 0, 1,
+      1, 1, 1, 1, 1, 1, 1, 1
+    ]);
+    const filtered = prefilterEnvironment(data, 4, 2, 2, 1);
+    expect(filtered.width).toBe(2);
+    expect(filtered.height).toBe(1);
+    expect(filtered.data.length).toBe(2 * 1 * 4);
+    expect(filtered.intensity).toBe(1);
+    // Both source rows contribute to the 1-row box filter, and the horizontal
+    // blur wraps the two target texels together.
+    expect(filtered.data[0]).toBeCloseTo(1.75);
+    expect(filtered.data[4]).toBeCloseTo(1.75);
   });
 
   it("builds a linear equirectangular DataTexture from the shared data", () => {

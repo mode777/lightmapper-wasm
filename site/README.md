@@ -148,10 +148,19 @@ The script resolves the download URL through
 HDRI from Poly Haven at runtime and CI never needs the network for it.
 
 The Radiance file is decoded once with three.js `HDRLoader` and flipped into
-the bottom-up convention shared by the bake harness and the display: row 0 is
-the south pole (`v = 0`) and the last row is the north pole (`v = 1`). The
-data is linear RGBA float radiance; the scene's intensity multiplier is applied
-separately by the bake skybox and the display background.
+the bottom-up convention: row 0 is the south pole (`v = 0`) and the last row
+is the north pole (`v = 1`). The display background uses the full 1,024 × 512
+linear RGBA float data. The bake uses a 128 × 64 box-filtered and blurred
+**irradiance copy** of the same source. A raw studio HDRI contains a
+high-frequency softbox diffusion grid that aliases badly when captured into a
+32–128 px hemisphere, so prefiltering is the standard diffuse-lighting setup;
+the scene's intensity multiplier is applied separately by both paths.
+
+The `hdri-studio` preset also uses one fine interpolation pass and four
+smoothing passes. The lightmapper's coarse hierarchical interpolation
+(otherwise four passes / 16-texel steps) produced large diamond artifacts on
+the walls and floor with this HDR content; the prefiltered environment plus a
+fine pass and extra smoothing removes that pattern.
 
 ## Harness and display boundaries
 
@@ -182,6 +191,11 @@ restores the depth state and deletes the texture in `finally`. Row 0 is the
 south pole (`v = 0`); the last row is the north pole. A scene without an
 environment keeps the existing ambient/emissive behavior and the `lmCreate`
 clear color.
+
+`BakeOptions` also exposes `interpolationPasses`, `interpolationThreshold` and
+`smoothPasses` for difficult HDR content. Keep the coarse interpolation grid in
+mind when tuning: the default 2 passes use 4-texel steps, while 4 passes start
+at 16-texel steps and can leave visible diamonds on large diffuse charts.
 
 `src/display/` consumes a completed `BakeResult` and never bakes. It creates a
 linear `THREE.DataTexture`, lit/emissive materials, lit/unlit/wireframe modes,
@@ -220,9 +234,20 @@ CHROME_SHELL_PATH=/path/to/chrome-headless-shell \
 ```
 
 The script builds the site, starts `vite preview` on a free port, opens every
-preview route at 640×400 with DPR 2, waits for `data-bake-state="done"` and
-writes the WebP files plus the manifest. Commit the images and manifest
-together.
+preview route at 640×400 with DPR 2 in a fresh browser, waits for
+`data-bake-state="done"` and writes the WebP files plus the manifest. Commit
+the images and manifest together.
+
+For the heavier scenes, capture one scenario per process and reuse an existing
+build:
+
+```sh
+npm run build --prefix site
+npm run capture:thumbnails --prefix site -- --only=hdri-studio --no-build
+```
+
+`--only=<id>` merges the entry into the existing manifest while preserving the
+catalog order; `--no-build` skips the Vite build when `site/dist` is current.
 
 **Recapture rules**
 

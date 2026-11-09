@@ -27,8 +27,9 @@ source, not an image-based lighting term on the display materials.
 
 - Bake a scene whose only light source is a linear equirectangular HDRI, with no
   analytic lights and no emissive meshes.
-- Use the same decoded HDRI data for the bake skybox and the three.js
-  background so the visible environment matches the baked lighting.
+- Use the same source HDRI for the full-resolution three.js background and a
+  prefiltered irradiance copy for the bake so the visible environment matches
+  the baked lighting without softbox-grid aliasing.
 - Keep the harness display-agnostic: raw typed arrays in, lightmap out, no
   three.js import.
 - Keep the showcase self-contained and deterministic: checked-in asset, no
@@ -137,11 +138,14 @@ Failures name the environment and the invalid value. The harness uploads one
 deletes the texture in the bake's `finally` path. A scene without an
 environment does not allocate an environment texture.
 
-The display layer uses the same `data` array to create a `THREE.DataTexture`
-with `RGBAFormat`, `FloatType`, `flipY = false`,
+The display layer uses the full-resolution decoded array to create a
+`THREE.DataTexture` with `RGBAFormat`, `FloatType`, `flipY = false`,
 `EquirectangularReflectionMapping`, `LinearSRGBColorSpace`, clamp-to-edge
 wrapping, the supported filter and `scene.backgroundIntensity = intensity`.
-The display texture is owned by the display and disposed with it.
+The display texture is owned by the display and disposed with it. The bake
+receives a separate 128 × 64 box-filtered and blurred irradiance copy; a raw
+1k studio HDRI contains a high-frequency softbox diffusion grid that aliases
+badly when captured into a 32–128 px hemisphere.
 
 Alternatives considered:
 
@@ -162,9 +166,10 @@ then:
 
 1. reads the loader's float image data;
 2. flips the rows once into bottom-up order;
-3. returns a `BakeEnvironment` plus a `THREE.DataTexture` built from the same
-   flipped array;
-4. disposes the loader's intermediate texture.
+3. builds a full-resolution `THREE.DataTexture` for the display;
+4. builds a 128 × 64 box-filtered and blurred `BakeEnvironment` irradiance
+   copy for the bake;
+5. disposes the loader's intermediate texture.
 
 The loader is site-only. The bake harness receives only the raw typed array and
 still imports nothing from three.js (the `bake-harness` import-boundary
@@ -218,11 +223,13 @@ built from the existing geometry helpers: floor, back wall, a pedestal, a
 sphere, a box and a torus, all `kind: "lit"`, with no emissive meshes and a
 black ambient color. The bake preset uses a 512² atlas, H32, two bounces,
 `zNear`/`zFar` 0.01/40, the usual dilation and `environment.intensity` 1.0.
-HDR radiance is much larger than the LDR default, so the scenario uses
-`interpolationPasses: 4` and `interpolationThreshold: 0.5`; without the higher
-absolute threshold the lightmapper renders a hemisphere for nearly every floor
-and wall texel under SwiftShader. The preview bake completes in roughly 37
-seconds on the verification box.
+The loader prefilters the HDR to a 128 × 64 irradiance copy for the bake.
+The preset uses `interpolationPasses: 1`, `interpolationThreshold: 0.5` and
+`smoothPasses: 4`. Four coarse passes (16-texel steps) produced large diamond
+artifacts on the walls and floor, and a very low threshold made the bake
+impractically slow under SwiftShader; one fine pass plus the prefiltered
+environment and extra smoothing keeps the preview bake in the smoke-test
+budget while removing the visible pattern.
 
 The scene metadata and bake preset gain an optional environment descriptor:
 
@@ -311,10 +318,16 @@ The key environment checks are:
 - **The HDRI is too bright or too dark for the lightmap** → a scene-level
   intensity multiplier plus ACES tone mapping in the display; verify finite
   statistics and a useful thumbnail.
-- **HDR radiance defeats the LDR interpolation threshold and makes the bake
-  extremely slow** → expose `interpolationPasses`/`interpolationThreshold` on
-  `BakeOptions` and set a higher absolute threshold for `hdri-studio`; the
-  preview bake is part of the smoke test so the regression is visible.
+- **A raw studio HDRI aliases its softbox grid and exposes the lightmapper's
+  coarse hierarchical interpolation grid** → prefilter the bake environment,
+  use one fine interpolation pass and extra smoothing for `hdri-studio`; the
+  preview bake and stage capture are part of the smoke test so the pattern is
+  visible in review.
+- **HDR radiance makes a very low interpolation threshold impractically slow**
+  → expose `interpolationPasses`/`interpolationThreshold`/`smoothPasses` on
+  `BakeOptions`; the HDRI preset uses a prefiltered environment, 1 pass, 0.5
+  threshold and 4 smoothing passes, which completes the preview in about 87
+  seconds on the verification box.
 - **Two WebGL2 contexts plus a 1k float texture per context increase memory
   use** → the display and harness contexts already exist; the environment adds
   roughly 16 MB for the HDRI scene and both textures are disposed with their
@@ -353,8 +366,9 @@ Add **AD-017 — HDRI environment baking in the showcase** to
 >
 > **Decision.** The site-local bake harness accepts an optional linear
 > equirectangular HDR environment, draws it as a fullscreen skybox for every
-> lightmapper hemisphere side before scene geometry, and uses the same decoded
-> data as a linear equirectangular three.js background. The environment asset
+> lightmapper hemisphere side before scene geometry, and uses the full decoded
+> data as a linear equirectangular three.js background. The bake receives a
+> prefiltered 128 × 64 irradiance copy of the same source. The environment asset
 > is a checked-in CC0 Poly Haven HDRI with recorded provenance and a developer
 > refresh script; the site does not fetch it at runtime. No C header, wasm
 > build, loader or package API changes.
@@ -362,10 +376,12 @@ Add **AD-017 — HDRI environment baking in the showcase** to
 > **Consequences.** The showcase gains an `hdri-studio` scenario and an
 > `environment` section; the harness keeps its display-agnostic boundary; the
 > display gains an equirectangular background path; and the asset is site-only
-> and excluded from the npm tarball. Environment orientation, intensity,
-> validation and lifecycle are covered by headless WebGL2 tests. The future
-> `lightmapper-wasm/bake` promotion (AD-018) must preserve the environment
-> input.
+> and excluded from the npm tarball. Prefiltering the diffuse environment and
+> using a fine interpolation pass plus extra smoothing avoids the softbox-grid
+> aliasing and coarse interpolation diamonds seen with a raw 1k HDRI.
+> Environment orientation, intensity, validation and lifecycle are covered by
+> headless WebGL2 tests. The future `lightmapper-wasm/bake` promotion (AD-018)
+> must preserve the environment input.
 
 This implements AD-015 (the showcase is a separate consumer), AD-016 (xatlas
 UVs for every lit mesh), AD-009 (the tested `dist` artifact) and AD-006 (the

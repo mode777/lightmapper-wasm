@@ -12,9 +12,14 @@ export class EnvironmentError extends Error {
 }
 
 export interface LoadedEnvironment {
+  /** Prefiltered irradiance copy used by the bake skybox. */
   environment: BakeEnvironment;
+  /** Full-resolution linear equirectangular texture used by the display. */
   texture: THREE.DataTexture;
 }
+
+export const PREFILTERED_ENVIRONMENT_WIDTH = 128;
+export const PREFILTERED_ENVIRONMENT_HEIGHT = 64;
 
 export interface LoadEnvironmentOptions {
   intensity?: number;
@@ -44,6 +49,87 @@ export function flipRowsBottomUp(
     flipped.set(data.subarray(source, source + rowLength), y * rowLength);
   }
   return flipped;
+}
+
+/**
+ * Build a low-resolution, blurred irradiance copy for diffuse baking. The
+ * full-resolution HDRI is still used for the visible background; a raw 1k
+ * studio HDRI contains a high-frequency softbox diffusion grid that aliases
+ * badly when captured into a 32-128 px hemisphere.
+ */
+export function prefilterEnvironment(
+  data: Float32Array,
+  width: number,
+  height: number,
+  targetWidth = PREFILTERED_ENVIRONMENT_WIDTH,
+  targetHeight = PREFILTERED_ENVIRONMENT_HEIGHT
+): BakeEnvironment {
+  if (!Number.isInteger(targetWidth) || !Number.isInteger(targetHeight) || targetWidth <= 0 || targetHeight <= 0) {
+    throw new EnvironmentError(`invalid prefilter dimensions ${targetWidth}x${targetHeight}`);
+  }
+  if (width % targetWidth !== 0 || height % targetHeight !== 0) {
+    throw new EnvironmentError(
+      `environment ${width}x${height} cannot be box-filtered to ${targetWidth}x${targetHeight}`
+    );
+  }
+
+  const scaleX = width / targetWidth;
+  const scaleY = height / targetHeight;
+  const downsampled = new Float32Array(targetWidth * targetHeight * 4);
+  for (let ty = 0; ty < targetHeight; ty += 1) {
+    for (let tx = 0; tx < targetWidth; tx += 1) {
+      const sum = [0, 0, 0, 0];
+      for (let sy = 0; sy < scaleY; sy += 1) {
+        const sourceY = ty * scaleY + sy;
+        for (let sx = 0; sx < scaleX; sx += 1) {
+          const source = (sourceY * width + tx * scaleX + sx) * 4;
+          sum[0] += data[source];
+          sum[1] += data[source + 1];
+          sum[2] += data[source + 2];
+          sum[3] += data[source + 3];
+        }
+      }
+      const count = scaleX * scaleY;
+      const target = (ty * targetWidth + tx) * 4;
+      downsampled[target] = sum[0] / count;
+      downsampled[target + 1] = sum[1] / count;
+      downsampled[target + 2] = sum[2] / count;
+      downsampled[target + 3] = sum[3] / count;
+    }
+  }
+
+  // A small separable [1 2 1] blur removes the remaining softbox grid pattern.
+  const weights = [1, 2, 1];
+  const blurred = new Float32Array(downsampled.length);
+  for (let y = 0; y < targetHeight; y += 1) {
+    for (let x = 0; x < targetWidth; x += 1) {
+      const sum = [0, 0, 0, 0];
+      for (let ky = -1; ky <= 1; ky += 1) {
+        const sourceY = Math.min(targetHeight - 1, Math.max(0, y + ky));
+        for (let kx = -1; kx <= 1; kx += 1) {
+          const sourceX = (x + kx + targetWidth) % targetWidth;
+          const source = (sourceY * targetWidth + sourceX) * 4;
+          const weight = weights[ky + 1] * weights[kx + 1];
+          sum[0] += downsampled[source] * weight;
+          sum[1] += downsampled[source + 1] * weight;
+          sum[2] += downsampled[source + 2] * weight;
+          sum[3] += downsampled[source + 3] * weight;
+        }
+      }
+      const target = (y * targetWidth + x) * 4;
+      blurred[target] = sum[0] / 16;
+      blurred[target + 1] = sum[1] / 16;
+      blurred[target + 2] = sum[2] / 16;
+      blurred[target + 3] = sum[3] / 16;
+    }
+  }
+
+  return {
+    width: targetWidth,
+    height: targetHeight,
+    data: blurred,
+    intensity: 1
+  };
 }
 
 export function createEnvironmentTexture(
@@ -98,15 +184,19 @@ export async function loadHdrEnvironment(
       throw new EnvironmentError(`HDRI ${url} did not decode to a float RGBA image`);
     }
 
-    const environment: BakeEnvironment = {
+    const fullData = flipRowsBottomUp(data, width, height);
+    const displayEnvironment: BakeEnvironment = {
       width,
       height,
-      data: flipRowsBottomUp(data, width, height),
+      data: fullData,
       intensity: options.intensity ?? 1
     };
-    validateBakeEnvironment(environment);
+    validateBakeEnvironment(displayEnvironment);
 
-    const texture = createEnvironmentTexture(environment, options.context);
+    const texture = createEnvironmentTexture(displayEnvironment, options.context);
+    const environment = prefilterEnvironment(fullData, width, height);
+    environment.intensity = displayEnvironment.intensity;
+    validateBakeEnvironment(environment);
     return { environment, texture };
   } finally {
     source.dispose();

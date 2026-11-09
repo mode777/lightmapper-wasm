@@ -149,6 +149,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
         Math.floor(bakeOptions.dilationPasses ?? DEFAULT_DILATION_PASSES)
       );
       const smooth = bakeOptions.smooth ?? true;
+      const smoothPasses = Math.max(0, Math.floor(bakeOptions.smoothPasses ?? 1));
       const interpolationPasses = Math.max(
         0,
         Math.min(8, Math.floor(bakeOptions.interpolationPasses ?? 2))
@@ -352,7 +353,8 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
             width,
             height,
             dilationPasses,
-            smooth
+            smooth,
+            smoothPasses
           );
           throwIfAborted(bakeOptions.signal);
 
@@ -529,15 +531,18 @@ function postProcess(
   width: number,
   height: number,
   dilationPasses: number,
-  smooth: boolean
+  smooth: boolean,
+  smoothPasses: number
 ): void {
   for (let i = 0; i < dilationPasses; i += 1) {
     module.lmImageDilate(lightmapPtr, tempPtr, width, height, 4);
     module.lmImageDilate(tempPtr, lightmapPtr, width, height, 4);
   }
   if (smooth) {
-    module.lmImageSmooth(lightmapPtr, tempPtr, width, height, 4);
-    module.lmImageDilate(tempPtr, lightmapPtr, width, height, 4);
+    for (let i = 0; i < smoothPasses; i += 1) {
+      module.lmImageSmooth(lightmapPtr, tempPtr, width, height, 4);
+      module.lmImageDilate(tempPtr, lightmapPtr, width, height, 4);
+    }
   }
 }
 

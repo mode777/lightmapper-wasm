@@ -43,10 +43,13 @@ export const hdriStudio: SceneDefinition = {
     zNear: 0.01,
     zFar: 40,
     dilationPasses: 8,
-    // HDR radiance is much larger than the LDR default; a higher absolute
-    // threshold lets the lightmapper interpolate smoothly lit floor/wall texels
-    // instead of rendering a hemisphere for nearly every one.
-    interpolationPasses: 4,
+    // A raw 1k studio HDRI plus the lightmapper's coarse hierarchical
+    // interpolation produced large diamond artifacts. The loader supplies a
+    // prefiltered irradiance copy, one fine interpolation pass avoids the
+    // coarse 16-texel grid, and four smoothing passes hide the remaining
+    // sampling mottling.
+    smoothPasses: 4,
+    interpolationPasses: 1,
     interpolationThreshold: 0.5
   },
   build(): SceneMesh[] {

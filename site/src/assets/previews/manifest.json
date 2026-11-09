@@ -15,9 +15,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "10ba02ee2d1dd071dc06eafc2fb561faea9a398681a0adff0d5fc66e636a3f74",
+      "sourceHash": "8192bd81d99f03cebd354a4d4dad3d0c317de5b5d2e10254041b30ead07e439d",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T15:20:48.743Z"
+      "capturedAt": "2026-11-09T17:41:36.284Z"
     },
     "cornell-box": {
       "file": "cornell-box.webp",
@@ -25,9 +25,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "74937af9419760701f3ef64ed2377ff311d8a633533c3449c73dcc1fef598be3",
+      "sourceHash": "aceb88e05139a40b04b03310bbc11d6aea3d4441ae11638a5c7aa0abb44eb8e8",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T15:21:24.734Z"
+      "capturedAt": "2026-11-09T17:42:18.881Z"
     },
     "emissive-alcove": {
       "file": "emissive-alcove.webp",
@@ -35,9 +35,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "a12766a8682d69e7b215f7c0ecdeb900b9a284ea68d08188157cbb27b461bf08",
+      "sourceHash": "a72e04e68300595e040ffa8719e52b8d57f834abf68edf7f323621834df0432d",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T15:24:08.486Z"
+      "capturedAt": "2026-11-09T17:40:27.635Z"
     },
     "tabletop-atlas": {
       "file": "tabletop-atlas.webp",
@@ -45,9 +45,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "d00f2abd4c8d060d424f2266f161a0c6d53c7551edf803c47282751ca00582ca",
+      "sourceHash": "5140cb9f91b781b82c669af1a9b232962ed83030abc7f4681f85195822b7ecc6",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T15:26:03.370Z"
+      "capturedAt": "2026-11-09T17:44:30.426Z"
     },
     "hdri-studio": {
       "file": "hdri-studio.webp",
@@ -55,9 +55,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "a49747868ea05f09bbec6dd5a41a078c2d26d4308e3aeea14efe3246e412f676",
+      "sourceHash": "83d06eb425b4269e4bc74ceac3a4144987846ee3014703419112a11ea8d3a777",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T15:26:41.394Z"
+      "capturedAt": "2026-11-09T17:46:13.709Z"
     }
   }
 }
