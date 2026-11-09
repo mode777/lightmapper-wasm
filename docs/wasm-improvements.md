@@ -1,7 +1,7 @@
 # WASM port improvements — findings and OpenSpec roadmap
 
 **Status:** planning baseline
-**Last updated:** 2026-11-08
+**Last updated:** 2026-11-09
 **Sources:** `mode777/lightmapper` @ `72b69e9` (“add WASM support”),
 `mode777/lightmapper-wasm` @ `f0fa005`, `mode777/libfive-wasm` @ `d59d540`
 **Audience:** maintainers creating OpenSpec changes from this roadmap.
@@ -90,6 +90,12 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   keeps the embedded flavour. `npm run test:dist`, `npm run test:loader` and
   `npm run test:consumer` cover the dist layout, loader scenarios and a Vite
   6.4.5 consumer (F5, F12 packaging).
+- The public showcase lives under `site/` and consumes the tested `dist`
+  artifact with `lightmapper-wasm: file:..` (AD-015). It has four procedural
+  scenarios, an xatlas-everywhere UV pipeline with the `[0,1)` clamp (AD-016),
+  a display-agnostic raw-WebGL bake harness, a three.js display layer,
+  checked-in thumbnails and a `Main`-only Pages deployment. The harness and
+  display stay site-local until `promote-bake-harness` and `add-three-adapter`.
 
 ### 3.2 What is missing or wrong
 
@@ -424,6 +430,10 @@ are the intended kebab-case change names.
 | 7 | `wasm-verification` | this repo | 4, 5 | Proposed | Headless WebGL2 smoke, golden bake, package consumer |
 | 8 | `typed-wasm-api` | this repo | 5 | Proposed | Generated types, error class, heap validation, lifecycle |
 | 9 | `wasm-release-docs` | both | 1–8 | Proposed | CHANGELOG, tag gate, docs, vendor pin, example cleanup |
+| 10 | `add-showcase-site` (AD-015, AD-016) | this repo | 5 | Implemented | Gallery, xatlas-everywhere UVs, bake harness, three.js display, Pages deploy |
+| 11 | `add-hdri-environment-baking` (AD-017) | this repo | 10 | Planned | Environment skybox and an HDRI studio scenario |
+| 12 | `promote-bake-harness` (AD-018) | this repo | 10, 11 | Planned | `lightmapper-wasm/bake` package entry |
+| 13 | `add-three-adapter` (AD-019) | this repo | 12 | Planned | Optional `lightmapper-wasm/three` package entry |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
@@ -714,6 +724,49 @@ ADR/roadmap status.
 **ADR footprint:** updates AD-004/AD-008/AD-009 statuses; adds a release ADR if
 the package adopts a tag gate.
 
+### 7.10 `add-showcase-site` — this repo (implemented)
+
+**Status:** Implemented. The site is a private Vite + TypeScript consumer under
+`site/`; it is not part of the npm tarball and adds no runtime dependency to
+the root package.
+
+**Goal:** give the package a public product surface and prove the recommended
+multi-object/shared-atlas workflow with a reusable bake path.
+
+**Why:** there was no gallery and every demo repeated the same GL setup,
+lightmap allocation, bounce loop and readback plumbing.
+
+**Scope:** `site/` (gallery, four scenarios, xatlas unwrap, raw-WebGL bake
+harness, three.js display, preview/atlas/code views, thumbnails and tests),
+the build workflow's dist artifact, a site job and a `Main`-only Pages deploy.
+
+**Acceptance:**
+- `ao-studio`, `cornell-box`, `emissive-alcove` and `tabletop-atlas` build from
+  procedural geometry and share the catalog metadata contract.
+- Every lit mesh is packed into one xatlas atlas; positions/normals are copied
+  through `xref`; normalized UVs are clamped below `1.0`; emitters are not in
+  the atlas.
+- The harness bakes a shared atlas with one GPU upload per bounce, reports
+  monotonic progress, yields, cancels and returns finite statistics.
+- The display consumes the bake result as a linear `THREE.DataTexture` and
+  never bakes.
+- Preview routes hide page chrome, use a 16:10 stage and complete a draft bake;
+  checked-in thumbnails carry source hashes and a preview version.
+- The site build with `SITE_BASE=/lightmapper-wasm/` emits hashed
+  `lightmapper.wasm` and `xatlas.wasm` assets and the build check references
+  both.
+- CI runs the site typecheck, unit tests, harness test, smoke bake, production
+  build and build check from the tested `dist` artifact.
+
+**Verification:** `npm run check --prefix site`, `npm test --prefix site`,
+`npm run test:harness --prefix site`, `npm run test:smoke --prefix site`,
+`SITE_BASE=/lightmapper-wasm/ npm run build --prefix site` and
+`SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site`.
+
+**ADR footprint:** adds AD-015 (separate showcase consumer deployed from the
+tested artifact) and AD-016 (xatlas-everywhere lightmap UVs); implements
+AD-004, AD-006 and AD-009 and respects AD-013.
+
 ---
 
 ## 8. Non-goals
@@ -758,7 +811,11 @@ release artifact and a golden test on top of. The third change,
 `wasm-release-build`, is implemented with a 44,136-byte wasm. The fifth
 change, `separate-wasm-loader`, is implemented with the same 44,136-byte wasm
 shipped as a separate asset beside the default entry plus a `./single`
-embedded entry. The next change should be `worker-support`.
+embedded entry. Change 10, `add-showcase-site`, is implemented with the four
+scenarios, the xatlas-everywhere pipeline, the bake harness/display and the
+Pages deployment. The next planned change in the showcase sequence is
+`add-hdri-environment-baking`; `worker-support` remains an independent open
+item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a
 `[lightmapper]` task here) and mirror the status in this roadmap. This repo’s

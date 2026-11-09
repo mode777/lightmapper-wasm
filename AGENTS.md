@@ -3,8 +3,8 @@
 Browser-facing WebAssembly product around ands/lightmapper, a single-header
 C/C++ lightmap-baking library. This repository owns the Emscripten CMake
 target, the C shim, the low-level JavaScript API, the WebGL2 context layer,
-the browser demo, the npm package, the build-dist step and the release
-workflow.
+the browser demo, the public showcase under `site/`, the npm package, the
+build-dist step and the release workflow.
 
 The C library is the upstream submodule `thirdparty/lightmapper`
 ([`mode777/lightmapper`](https://github.com/mode777/lightmapper)). C-side
@@ -52,18 +52,21 @@ workflow unless the user explicitly asks for one.
   layout.
 - `openspec/specs/c-library-port/` — the upstream WebGL2 contract consumed by
   this package.
+- `site/README.md` — the showcase consumer, scene/atlas contract, harness and
+  display boundaries, thumbnails and deployment.
 
 ## Verification before push
 
 The full pipeline must be green before pushing to `Main`:
 
 ```bash
-npm run verify:remote   # builds WASM with emsdk and runs smoke + golden bake on the verification box
+npm run verify:remote   # builds WASM with emsdk and runs the root + site suites on the verification box
 ```
 
 Requires `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD` in the environment and
 `CHROME_SHELL_PATH` (or the default chrome-headless-shell location). CI runs
-the same steps (`npm test`, `npm run test:bake`) on every push to `Main`.
+the root tests, the golden bake and the site typecheck/tests/harness/smoke on
+every push to `Main`.
 
 ## Repo quick facts
 
@@ -76,6 +79,10 @@ the same steps (`npm test`, `npm run test:bake`) on every push to `Main`.
 - Golden bake data lives in `test/golden/`; regenerate with
   `npm run verify:remote -- --update-golden` only when a deliberate behavior
   change alters the bake, and include the stats delta in the commit message.
+- The showcase lives in `site/`, consumes the root package with
+  `lightmapper-wasm: file:..` and is not part of the npm tarball. Use
+  `npm ci --prefix site` once, then the site commands listed below. Scene source
+  changes require recapturing the checked-in thumbnails; see `site/README.md`.
 
 ## Upstream C rule
 
@@ -109,6 +116,15 @@ npm run test:readback # readback state handling
 npm run test:dist     # assembled dist layout
 npm run test:loader   # loader asset-resolution scenarios
 npm run test:consumer # packaged consumer build (Vite)
+
+# Showcase (site/) — requires CHROME_SHELL_PATH for the browser suites
+npm ci --prefix site
+npm run check --prefix site
+npm test --prefix site
+npm run test:harness --prefix site
+npm run test:smoke --prefix site
+SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
+SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site
 ```
 
 The default entry ships `dist/index.js` plus a separate
@@ -127,6 +143,9 @@ artifact layout matches the docs.
   capability probe and strict context binding unless a proposal explicitly
   changes them.
 - Keep the package ESM-only, browser-first and free of runtime dependencies.
+- Keep the showcase a separate consumer: `site/` is not published, its
+  dependencies stay in `site/package.json`, and it consumes the tested `dist`
+  artifact rather than rebuilding wasm or installing from the registry.
 - Do not claim Node rendering support without a real WebGL2 implementation.
 - The reference wasm build is single-threaded: no pthreads, shared memory or
   SIMD.

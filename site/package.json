@@ -1,0 +1,33 @@
+{
+  "name": "lightmapper-wasm-showcase",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Public showcase for lightmapper-wasm. Not part of the npm package.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:harness": "node scripts/harness-test.mjs",
+    "test:smoke": "node scripts/bake-smoke.mjs",
+    "build:check": "node scripts/check-build.mjs",
+    "capture:thumbnails": "node scripts/capture-thumbnails.mjs"
+  },
+  "dependencies": {
+    "highlight.js": "^11.12.0",
+    "lightmapper-wasm": "file:..",
+    "three": "0.187.0",
+    "xatlas-wasm": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/three": "0.187.0",
+    "puppeteer-core": "^24.43.1",
+    "typescript": "^5.8.2",
+    "vite": "6.4.5",
+    "vitest": "3.2.7"
+  }
+}

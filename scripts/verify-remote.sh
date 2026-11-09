@@ -106,6 +106,18 @@ if [ "\${UPDATE_GOLDEN:-0}" = "1" ]; then
 else
   npm run test:bake
 fi
+
+echo "==> Showcase: install and verify site/"
+if ! npm ci --prefix site; then
+  echo "site npm ci failed (likely out-of-sync lockfile); falling back to npm install" >&2
+  npm install --prefix site
+fi
+npm run check --prefix site
+npm test --prefix site
+npm run test:harness --prefix site
+npm run test:smoke --prefix site
+SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
+SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site
 REMOTE_SCRIPT
 
 if [ "$UPDATE_GOLDEN" = "1" ]; then

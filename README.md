@@ -205,6 +205,45 @@ Serve the repository root over HTTP; opening the page from `file://` will not
 load the module or the `.obj` asset. The demo needs WebGL2 and
 `EXT_color_buffer_float`; the page reports a clear error when either is missing.
 
+## Showcase
+
+The public showcase is at
+<https://mode777.github.io/lightmapper-wasm/> and lives under
+[`site/`](https://github.com/mode777/lightmapper-wasm/tree/Main/site). It is a
+private Vite + TypeScript consumer that links this checkout with
+`lightmapper-wasm: file:..`; it is **not** part of the npm tarball and adds no
+runtime dependency to the package.
+
+The four scenarios are `ao-studio` (ambient-only AO), `cornell-box`
+(multi-bounce GI and color bleeding), `emissive-alcove` (HDR neon emitters) and
+`tabletop-atlas` (multiple meshes in one shared xatlas atlas). Every scenario
+unwraps its lit meshes through `xatlas-wasm`, bakes with the raw-WebGL harness
+and displays the result with three.js.
+
+```sh
+npm ci --prefix site
+npm run dev --prefix site        # local gallery at http://127.0.0.1:5173/
+npm run check --prefix site      # TypeScript
+npm test --prefix site           # catalog, scene, atlas and thumbnail tests
+npm run test:harness --prefix site   # headless harness + display checks
+npm run test:smoke --prefix site     # gallery, preview bakes and failure states
+SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
+SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site
+```
+
+The build workflow uploads the tested `dist` artifact, the `site` job installs
+and tests the showcase from that artifact, and the `deploy` job publishes only
+on `Main` pushes or manual dispatch. The repository's Pages source must be set
+to **GitHub Actions**; the workflow uses `actions/configure-pages`,
+`actions/upload-pages-artifact` and `actions/deploy-pages`. Wasm is never
+rebuilt in the site job and `lightmapper-wasm` is never installed from the npm
+registry there.
+
+`?preview=1` hides the page chrome and fixes the stage to 16:10 for thumbnail
+capture; `?fail=webgl2|float|lightmapper|xatlas` exercises the capability and
+asset failure states. See [`site/README.md`](site/README.md) for the scene
+contract, atlas rules, harness/display boundaries and recapture procedure.
+
 ## Testing
 
 ```sh

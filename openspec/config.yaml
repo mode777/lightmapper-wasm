@@ -24,6 +24,20 @@ context: |
   flavours, typechecks, runs the Node smoke test and headless Chrome golden
   bake on every push to `Main`, and publishes on release.
 
+  The public showcase lives under `site/` (AD-015): a private Vite + TypeScript
+  consumer that links this checkout with `lightmapper-wasm: file:..`, is not in
+  the npm tarball and adds no runtime dependency. It has four procedural
+  scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`)
+  and a site-local, package-shaped raw-WebGL bake harness plus a three.js
+  display layer. The harness and display are planned for promotion as
+  `lightmapper-wasm/bake` (AD-018) and `lightmapper-wasm/three` (AD-019); until
+  then they stay under `site/src/bake/` and `site/src/display/`. Every lit mesh
+  uses one xatlas atlas with a `[0,1)` UV clamp (AD-016). The build workflow
+  uploads the tested `dist` artifact, the `site` job builds and tests from it
+  with `SITE_BASE=/lightmapper-wasm/`, and the `deploy` job publishes to Pages
+  only on `Main` pushes or manual dispatch. Checked-in thumbnails carry scene
+  source hashes and a `PREVIEW_VERSION`.
+
   Targets: WebGL2 / OpenGL ES 3.0 in modern browsers. Emscripten is pinned to
   3.1.64 for reproducible builds, and local scripts and CI reject other
   versions. The wasm path requires `EXT_color_buffer_float` because the
@@ -33,7 +47,10 @@ context: |
   Remaining defects and gaps are catalogued in `docs/wasm-improvements.md`;
   the major packaging, build and sampling issues are fixed. Still open:
   handwritten TypeScript declarations (generated declarations/ABI checks are
-  proposed), worker support, and broader capability-failure coverage.
+  proposed), worker support, broader capability-failure coverage, and promoting
+  the showcase harness/display to package entries. The site currently consumes
+  the separate-asset default entry; do not describe the old SINGLE_FILE-only
+  layout as current.
 
   Constraints: keep the package ESM-only and browser-first; do not add a
   runtime dependency; keep the public low-level C-shaped API and the
@@ -82,13 +99,24 @@ operations:
   apply:
     guidance:
       - Verify the build artifact layout after every packaging change; the
-        current SINGLE_FILE build has no .wasm and the planned separate-asset
-        build must actually emit one.
+        current default entry emits a separate hashed `lightmapper.wasm`, and
+        the site build must emit hashed `lightmapper.wasm` and `xatlas.wasm`
+        assets. Run `npm run build:check --prefix site` after packaging work.
       - Keep the WebGL2 capability probe and strict context binding intact
         unless the proposal explicitly covers them.
+      - Keep the showcase a consumer of the tested `dist` artifact; do not
+        rebuild wasm in the site job, do not install `lightmapper-wasm` from
+        the registry, and keep site dependencies confined to `site/`.
+      - Keep the harness display-agnostic and the display bake-free. Scene
+        source changes require recapturing checked-in thumbnails; preview
+        viewport/lighting/material/CSS changes require a `PREVIEW_VERSION`
+        bump.
   archive:
     guidance:
       - Confirm docs/decisions.md and docs/wasm-improvements.md describe the
         implemented state, not the planned state.
       - Confirm every [lightmapper] dependency is completed or explicitly left
         open, and that the submodule pointer matches the consumed commit.
+      - For showcase changes, confirm the checked-in thumbnails match their
+        source hashes and `PREVIEW_VERSION`, and that the site build check
+        passes with `SITE_BASE=/lightmapper-wasm/`.

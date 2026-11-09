@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "previewVersion": 1,
+  "settings": {
+    "width": 640,
+    "height": 400,
+    "dpr": 2,
+    "format": "webp",
+    "quality": 90
+  },
+  "scenarios": {
+    "ao-studio": {
+      "file": "ao-studio.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "fd8e0eb8157583eadb4e9706a925c59842a65ebd88a9ad256c3b019220d26dc5",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T11:54:39.096Z"
+    },
+    "cornell-box": {
+      "file": "cornell-box.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "00ea86acd73d344d3dbf01ba38c8b7effc5eae30f8fbbe38283b0aeff6b6dfc7",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T11:55:24.707Z"
+    },
+    "emissive-alcove": {
+      "file": "emissive-alcove.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "9cd5c99cbd5abe7948aa0289e0ed02a534d28b2a074357816db0ea3b718e33d2",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T11:58:22.454Z"
+    },
+    "tabletop-atlas": {
+      "file": "tabletop-atlas.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "faf403e04d8adfe1f069ab8e91b2422dc8b6619518008927b2ac21cc0dbdebb8",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T12:00:25.225Z"
+    }
+  }
+}

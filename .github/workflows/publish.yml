@@ -100,6 +100,126 @@ jobs:
         env:
           CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
 
+      - name: Dist layout test
+        run: npm run test:dist
+
+      - name: Loader asset test
+        run: npm run test:loader
+        env:
+          CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
+
+      - name: Packaged consumer test
+        run: npm run test:consumer
+
+      - name: Upload tested dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lightmapper-dist
+          path: dist/
+          retention-days: 7
+
       - name: Publish to npm
         if: github.event_name == 'release'
         run: npm publish --provenance --access public
+
+  site:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Download tested dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lightmapper-dist
+          path: dist
+
+      - name: Install site dependencies
+        run: npm ci --prefix site
+
+      - name: Site typecheck
+        run: npm run check --prefix site
+
+      - name: Site unit tests
+        run: npm test --prefix site
+
+      - name: Install chrome-headless-shell
+        id: chrome
+        run: |
+          INSTALLED="$(npx --yes @puppeteer/browsers install chrome-headless-shell@131.0.6778.264 --path /tmp/chrome | awk '{print $NF}' | tail -n 1)"
+          if [ -x "$INSTALLED" ]; then
+            CHROME_SHELL="$INSTALLED"
+          else
+            CHROME_SHELL="$(find "$INSTALLED" -type f -name chrome-headless-shell | head -n 1)"
+          fi
+          test -n "$CHROME_SHELL"
+          test -x "$CHROME_SHELL"
+          echo "path=$CHROME_SHELL" >> "$GITHUB_OUTPUT"
+          echo "chrome-headless-shell: $CHROME_SHELL"
+
+      - name: Site harness and display test
+        run: npm run test:harness --prefix site
+        env:
+          CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
+
+      - name: Site smoke bake
+        run: npm run test:smoke --prefix site
+        env:
+          CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
+
+      - name: Build site for Pages
+        run: npm run build --prefix site
+        env:
+          SITE_BASE: /lightmapper-wasm/
+
+      - name: Check production build
+        run: npm run build:check --prefix site
+        env:
+          SITE_BASE: /lightmapper-wasm/
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist/
+          retention-days: 7
+
+  deploy:
+    needs: site
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/Main')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

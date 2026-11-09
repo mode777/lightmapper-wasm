@@ -240,3 +240,50 @@ surfacing runtime readback errors to JavaScript belongs to the typed API work.
 unwritten but does not abort a long bake. The error is visible on the console;
 JavaScript callers cannot branch on it until the typed API exposes an error
 surface.
+
+## AD-015 — Showcase is a separate consumer deployed from the tested artifact {#ad-015}
+
+**Context.** The repository has no public gallery and no reusable bake path;
+every demo repeats the same GL setup, lightmap allocation, bounce loop and
+readback plumbing. The package must stay browser-first and dependency-free
+(AD-006), and the split between the C library, wrapper and package (AD-004)
+means the showcase is a consumer, not part of the published API. The loader
+already ships a separate wasm asset (AD-009), so the showcase must prove that
+artifact instead of rebuilding wasm.
+
+**Decision.** Add a private Vite + TypeScript application under `site/`. It
+consumes `lightmapper-wasm` from the local checkout with `file:..`, is not
+included in the npm tarball and adds no runtime dependency to the package. The
+build workflow uploads the tested `dist` artifact; a `site` job downloads it,
+installs `site/`, typechecks, runs the site tests, the harness test and the
+smoke bake, builds with `SITE_BASE=/lightmapper-wasm/` and checks the production
+layout; a `deploy` job publishes that output to GitHub Pages only on `Main`
+pushes or manual dispatch. The site-local bake harness and three.js display
+remain package-shaped and are promoted by follow-up changes (AD-018/AD-019).
+
+**Consequences.** The Pages source must be GitHub Actions and the deployed URL
+is `https://mode777.github.io/lightmapper-wasm/`. CI never installs
+`lightmapper-wasm` from the registry and never rebuilds the wasm in the site
+job. Site-only dependencies stay confined to `site/package.json`, and the site
+build doubles as a packaged-consumer check. The package tarball still excludes
+`site/`, and the root package keeps no runtime dependencies.
+
+## AD-016 — xatlas-everywhere lightmap UVs {#ad-016}
+
+**Context.** The lightmapper samples its lightmap with positive-mod semantics,
+so an exactly normalized UV of `1.0` wraps to `0.0`. xatlas produces texel-space
+UVs that can sit exactly on the atlas edge. The repository documented a
+multi-object shared-atlas recipe but had no consumer that exercised it.
+
+**Decision.** Every showcase scenario unwraps every lit mesh into one
+`xatlas-wasm` atlas. Positions and normals are copied through each output
+vertex's `xref`; normalized UVs are clamped to `[0, 1 - 1e-6]`, and coordinates
+outside the atlas are rejected. Emissive-only meshes are drawn during the bake
+but are not added to the atlas. The shared atlas is uploaded to the GPU once
+after all objects finish each bounce.
+
+**Consequences.** `xatlas-wasm` is a site-only dependency; the core package
+remains dependency-free. The Atlas view and the scene tests depend on the same
+pipeline, and the `[0,1)` bound is a tested invariant rather than a convention.
+Promoting the harness and display to package entries (AD-018/AD-019) keeps this
+UV contract unchanged.
