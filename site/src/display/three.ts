@@ -9,6 +9,7 @@ import {
   createEmissiveMaterial,
   createLightmapTexture,
   createLitMaterial,
+  lightmapFilterFor,
   type DisplayMode,
   type Vec3
 } from "./materials";
@@ -22,6 +23,9 @@ export class DisplayError extends Error {
 
 export interface ThreeDisplayOptions {
   background?: Vec3 | null;
+  /** Optional linear equirectangular HDRI background texture. */
+  environment?: THREE.Texture | null;
+  environmentIntensity?: number;
   camera?: SceneCamera;
 }
 
@@ -38,6 +42,7 @@ export class ThreeDisplay {
   private readonly litMaterials: THREE.MeshBasicMaterial[] = [];
   private readonly resizeObserver: ResizeObserver;
   private lightmap: THREE.DataTexture | null = null;
+  private environmentTexture: THREE.Texture | null = null;
   private animationFrame = 0;
   private rendering = false;
   private disposed = false;
@@ -53,7 +58,7 @@ export class ThreeDisplay {
     try {
       this.renderer = new THREE.WebGLRenderer({
         antialias: true,
-        alpha: options.background == null,
+        alpha: options.background == null && options.environment == null,
         powerPreference: "high-performance"
       });
     } catch (error) {
@@ -74,7 +79,11 @@ export class ThreeDisplay {
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.setBackground(options.background ?? null);
+    if (options.environment) {
+      this.setEnvironment(options.environment, options.environmentIntensity ?? 1);
+    } else {
+      this.setBackground(options.background ?? null);
+    }
 
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
     this.camera.position.set(4, 3, 5);
@@ -96,6 +105,7 @@ export class ThreeDisplay {
   }
 
   setBackground(color: Vec3 | null): void {
+    this.clearEnvironment();
     if (color) {
       this.scene.background = new THREE.Color(color[0], color[1], color[2]);
       this.renderer.setClearAlpha(1);
@@ -103,6 +113,38 @@ export class ThreeDisplay {
       this.scene.background = null;
       this.renderer.setClearAlpha(0);
     }
+  }
+
+  setEnvironment(texture: THREE.Texture | null, intensity = 1): void {
+    if (this.environmentTexture && this.environmentTexture !== texture) {
+      this.environmentTexture.dispose();
+    }
+    this.environmentTexture = texture;
+
+    if (!texture) {
+      this.scene.background = null;
+      this.scene.backgroundIntensity = 1;
+      this.renderer.setClearAlpha(0);
+      return;
+    }
+
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.LinearSRGBColorSpace;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    if (texture instanceof THREE.DataTexture) {
+      const filter = lightmapFilterFor(this.renderer.getContext());
+      texture.minFilter = filter;
+      texture.magFilter = filter;
+      texture.needsUpdate = true;
+    }
+    this.scene.background = texture;
+    this.scene.backgroundIntensity = intensity;
+    this.renderer.setClearAlpha(1);
+  }
+
+  get backgroundTexture(): THREE.Texture | null {
+    return this.environmentTexture;
   }
 
   setScene(scene: UnwrappedScene, result?: BakeResult, camera?: SceneCamera): void {
@@ -264,6 +306,7 @@ export class ThreeDisplay {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.clearObject();
+    this.clearEnvironment();
     this.scene.clear();
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -294,6 +337,12 @@ export class ThreeDisplay {
     this.camera.updateProjectionMatrix();
     this.controls.update();
     this.framed = true;
+  }
+
+  private clearEnvironment(): void {
+    if (!this.environmentTexture) return;
+    this.environmentTexture.dispose();
+    this.environmentTexture = null;
   }
 
   private clearObject(): void {

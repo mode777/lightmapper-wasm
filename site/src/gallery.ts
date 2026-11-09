@@ -1,3 +1,4 @@
+import { LIGHTMAPPER_HEADER_URL } from "./chrome";
 import { SCENARIOS } from "./demos";
 import { sectionInfo, SECTIONS } from "./demos/sections";
 import type { SceneDefinition, SceneSection } from "./demos/types";
@@ -74,15 +75,33 @@ export function createGallery(_route: Route): View {
         el("p", {
           className: "hero-lead",
           textContent:
-            "Four scenes, one raw-WebGL bake harness and a shared xatlas atlas. Every lightmap is computed on the GPU from the same wasm artifact the package ships."
+            "Five scenes, one raw-WebGL bake harness and a shared xatlas atlas. Every lightmap is computed on the GPU from the same wasm artifact the package ships."
         }),
+        el(
+          "p",
+          { className: "hero-attribution" },
+          "Based on ",
+          el("a", {
+            href: LIGHTMAPPER_HEADER_URL,
+            textContent: "lightmapper.h",
+            rel: "noreferrer"
+          }),
+          " by Andreas Mantler."
+        ),
         el(
           "div",
           { className: "hero-actions" },
           el("a", {
             className: "button primary",
-            href: demoHref("cornell-box"),
-            textContent: "Open the Cornell box"
+            href: "#gallery",
+            textContent: "Browse the gallery",
+            onClick: (event: Event) => {
+              event.preventDefault();
+              document.getElementById("gallery")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+              });
+            }
           }),
           el("a", {
             className: "button",
@@ -109,7 +128,7 @@ export function createGallery(_route: Route): View {
     ),
     el(
       "div",
-      { className: "section-heading" },
+      { className: "section-heading", id: "gallery" },
       el("h2", { textContent: "Bake gallery" }),
       el("p", {
         textContent:

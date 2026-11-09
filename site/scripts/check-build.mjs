@@ -70,6 +70,8 @@ check("index.html carries the SITE_BASE path", () => {
 
 const lightmapperFiles = findWasm("lightmapper");
 const xatlasFiles = findWasm("xatlas");
+const hdriFiles = listFiles(DIST).filter((file) => file.endsWith(".hdr"));
+const HDRI_BYTES = 1_615_248;
 
 check("emits a hashed lightmapper.wasm", () => {
   if (lightmapperFiles.length !== 1) {
@@ -93,6 +95,19 @@ check("emits a hashed xatlas.wasm", () => {
   if (statSync(file).size <= 0) throw new Error("xatlas wasm is empty");
 });
 
+check("emits the checked-in HDRI asset", () => {
+  if (hdriFiles.length !== 1) {
+    throw new Error(`expected one .hdr asset, found ${hdriFiles.length}`);
+  }
+  const { file, name } = { file: hdriFiles[0], name: hdriFiles[0].split("/").pop() };
+  if (!/studio_small_09_1k[-.][A-Za-z0-9_-]{6,}\.hdr$/.test(name ?? "")) {
+    throw new Error(`HDRI asset does not look content-hashed: ${name}`);
+  }
+  if (statSync(file).size !== HDRI_BYTES) {
+    throw new Error(`HDRI asset has ${statSync(file).size} bytes; expected ${HDRI_BYTES}`);
+  }
+});
+
 check("built JavaScript references both wasm assets", () => {
   const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
   if (scripts.length === 0) throw new Error("no JavaScript was emitted");
@@ -108,6 +123,19 @@ check("built JavaScript references both wasm assets", () => {
     const url = `${BASE}${relativePath}`;
     if (!source.includes(url)) throw new Error(`JavaScript does not reference ${url}`);
   }
+});
+
+check("built JavaScript references the HDRI asset", () => {
+  const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
+  if (scripts.length === 0) throw new Error("no JavaScript was emitted");
+  const source = scripts.map((file) => readFileSync(file, "utf8")).join("\n");
+  const file = hdriFiles[0];
+  if (!file) throw new Error("HDRI asset is missing");
+  const name = file.split("/").pop();
+  if (!name || !source.includes(name)) throw new Error(`JavaScript does not reference ${name}`);
+  const relativePath = relative(DIST, file).replace(/\\/g, "/");
+  const url = `${BASE}${relativePath}`;
+  if (!source.includes(url)) throw new Error(`JavaScript does not reference ${url}`);
 });
 
 if (failures.length > 0) {

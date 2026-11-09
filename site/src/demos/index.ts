@@ -2,6 +2,7 @@ import { aoStudio } from "./ao-studio";
 import { cornellBox } from "./cornell-box";
 import { emissiveAlcove } from "./emissive-alcove";
 import { validateGeometry } from "./geometry";
+import { hdriStudio } from "./hdri-studio";
 import { tabletopAtlas } from "./tabletop-atlas";
 import type { SceneDefinition, SceneMesh } from "./types";
 
@@ -9,7 +10,8 @@ export const SCENARIOS: readonly SceneDefinition[] = [
   aoStudio,
   cornellBox,
   emissiveAlcove,
-  tabletopAtlas
+  tabletopAtlas,
+  hdriStudio
 ];
 
 export const SCENARIO_BY_ID: ReadonlyMap<string, SceneDefinition> = new Map(

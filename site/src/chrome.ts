@@ -1,8 +1,8 @@
 import { el } from "./dom";
-import { demoHref } from "./router";
 
 export const REPOSITORY_URL = "https://github.com/mode777/lightmapper-wasm";
 export const PACKAGE_URL = "https://www.npmjs.com/package/lightmapper-wasm";
+export const LIGHTMAPPER_HEADER_URL = "https://github.com/ands/lightmapper";
 
 export function createHeader(): HTMLElement {
   return el(
@@ -23,7 +23,6 @@ export function createHeader(): HTMLElement {
       "nav",
       { className: "site-nav", "aria-label": "Primary" },
       el("a", { href: "#/", textContent: "Gallery" }),
-      el("a", { href: demoHref("cornell-box"), textContent: "Cornell box" }),
       el("a", { href: REPOSITORY_URL, textContent: "GitHub", rel: "noreferrer" }),
       el("a", { className: "nav-cta", href: PACKAGE_URL, textContent: "npm", rel: "noreferrer" })
     )
@@ -46,7 +45,7 @@ export function createFooter(): HTMLElement {
       { className: "footer-links" },
       el("a", { href: REPOSITORY_URL, textContent: "Source", rel: "noreferrer" }),
       el("a", { href: PACKAGE_URL, textContent: "Package", rel: "noreferrer" }),
-      el("a", { href: "https://github.com/ands/lightmapper", textContent: "Upstream lightmapper", rel: "noreferrer" }),
+      el("a", { href: LIGHTMAPPER_HEADER_URL, textContent: "lightmapper.h", rel: "noreferrer" }),
       el("a", { href: "https://github.com/mode777/xatlas-wasm", textContent: "xatlas-wasm", rel: "noreferrer" })
     )
   );

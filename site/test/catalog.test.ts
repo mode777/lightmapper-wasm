@@ -36,6 +36,7 @@ describe("scenario catalog", () => {
     }
     expect(SECTIONS.map((section) => section.id)).toEqual([
       "ambient",
+      "environment",
       "gi",
       "emissive",
       "multi-object"

@@ -109,9 +109,14 @@ export async function launchBrowser() {
   });
 }
 
-export async function openPage(browser, url, { label = "page", timeout = 30_000 } = {}) {
+export async function openPage(
+  browser,
+  url,
+  { label = "page", timeout = 30_000, requests = null } = {}
+) {
   const page = await browser.newPage();
   const pageErrors = [];
+  if (requests) page.on("request", (request) => requests.push(request.url()));
   page.on("console", (message) => {
     if (message.type() === "error") console.error(`[${label}:console] ${message.text()}`);
   });

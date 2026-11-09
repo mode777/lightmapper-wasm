@@ -255,6 +255,17 @@ button:disabled {
   font-size: clamp(1rem, 1.6vw, 1.13rem);
 }
 
+.hero-attribution {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.hero-attribution a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

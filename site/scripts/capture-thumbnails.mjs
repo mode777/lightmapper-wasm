@@ -17,7 +17,7 @@ import {
 const ROOT = siteRoot();
 const PREVIEW_DIR = join(ROOT, "src", "assets", "previews");
 const BASE = process.env.SITE_BASE || "/";
-const CAPTURE_TIMEOUT_MS = 300_000;
+const CAPTURE_TIMEOUT_MS = 600_000;
 
 async function main() {
   const settings = readThumbnailSettings();

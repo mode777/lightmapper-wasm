@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SCENARIOS, validateScene } from "../src/demos";
+import { hdriStudio } from "../src/demos/hdri-studio";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
 import { validateGeometry } from "../src/demos/geometry";
 
@@ -23,6 +24,16 @@ describe("scene catalog validity", () => {
     const result = validateScene(tabletopAtlas);
     expect(result.litCount).toBeGreaterThanOrEqual(4);
     expect(result.emissiveCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps hdri-studio environment-only with black ambient and no emitters", () => {
+    const result = validateScene(hdriStudio);
+    expect(result.litCount).toBeGreaterThan(0);
+    expect(result.emissiveCount).toBe(0);
+    expect(hdriStudio.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriStudio.meta.sections).toEqual(["environment"]);
+    expect(hdriStudio.bake.environment?.url).toContain("studio_small_09_1k.hdr");
+    expect(hdriStudio.bake.environment?.intensity).toBeGreaterThan(0);
   });
 
   it("rejects non-finite geometry with the scene and mesh name", () => {

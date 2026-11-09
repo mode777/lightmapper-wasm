@@ -13,6 +13,11 @@ export const SECTIONS: readonly SectionInfo[] = [
     description: "Ambient-only bakes that reveal contact shadows and occlusion."
   },
   {
+    id: "environment",
+    label: "HDRI environment",
+    description: "Bakes lit only by a linear equirectangular HDR environment."
+  },
+  {
     id: "gi",
     label: "Global illumination",
     description: "Multi-bounce bakes with color bleeding between surfaces."

@@ -1,6 +1,13 @@
-export type SceneSection = "ambient" | "gi" | "emissive" | "multi-object";
+export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";
 
 export type Vec3 = [number, number, number];
+
+export interface SceneEnvironment {
+  /** Vite-resolved local `.hdr` URL. */
+  url: string;
+  /** Linear radiance multiplier used by the bake and the display background. */
+  intensity: number;
+}
 
 export interface SceneCamera {
   position: Vec3;
@@ -27,10 +34,16 @@ export interface BakePreset {
   bounces: number;
   /** Linear ambient/sky color passed to lmCreate. */
   ambient: Vec3;
+  /** Optional equirectangular HDRI used as the bake skybox and display background. */
+  environment?: SceneEnvironment;
   zNear?: number;
   zFar?: number;
   dilationPasses?: number;
   smooth?: boolean;
+  /** Hierarchical interpolation passes passed to lmCreate (0-8). */
+  interpolationPasses?: number;
+  /** Absolute radiance error below which lmCreate interpolates. */
+  interpolationThreshold?: number;
 }
 
 export interface SceneMesh {

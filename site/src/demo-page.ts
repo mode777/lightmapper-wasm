@@ -8,6 +8,7 @@ import {
   BakeError,
   isAbortError,
   type BakeEmissiveObject,
+  type BakeEnvironment,
   type BakeLitObject,
   type BakeObject,
   type BakeOptions,
@@ -16,6 +17,7 @@ import {
   type BakeScene
 } from "./bake/types";
 import { QUALITY_PRESETS, isQuality, PREVIEW_VERSION, type Quality } from "./demos/coverage";
+import { loadHdrEnvironment, type LoadedEnvironment } from "./environment/hdr";
 import { sectionInfo } from "./demos/sections";
 import { sourceFor } from "./demos/sources";
 import type { SceneDefinition, SceneMesh } from "./demos/types";
@@ -28,7 +30,7 @@ hljs.registerLanguage("typescript", typescript);
 
 type Tab = "3d" | "atlas" | "code";
 type BakeState = "idle" | "baking" | "done" | "error";
-type FailureMode = "webgl2" | "float" | "lightmapper" | "xatlas";
+type FailureMode = "webgl2" | "float" | "lightmapper" | "xatlas" | "hdri";
 
 interface ShowcaseDebug {
   id: string;
@@ -473,6 +475,8 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       showError("ext_color_buffer_float", "EXT_color_buffer_float is missing", message);
     } else if (mode === "lightmapper") {
       showError("lightmapper-wasm", "lightmapper.wasm could not be loaded", message);
+    } else if (mode === "hdri") {
+      showError("hdri", "HDRI environment could not be loaded", message);
     } else {
       showError("xatlas-wasm", "xatlas.wasm could not be loaded", message);
     }
@@ -519,6 +523,8 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       bounces,
       dilationPasses: scenario.bake.dilationPasses,
       smooth: scenario.bake.smooth ?? true,
+      interpolationPasses: scenario.bake.interpolationPasses,
+      interpolationThreshold: scenario.bake.interpolationThreshold,
       zNear: scenario.bake.zNear,
       zFar: scenario.bake.zFar,
       signal: controller.signal,
@@ -573,7 +579,14 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     updateBadges();
     setBaking(false);
 
-    if (forcedFailure) {
+    if (forcedFailure === "hdri") {
+      try {
+        await loadHdrEnvironment("/missing-environment.hdr");
+      } catch (error) {
+        if (!disposed) showFailure("hdri", error);
+        return;
+      }
+    } else if (forcedFailure) {
       try {
         if (forcedFailure === "xatlas") {
           resetXAtlasForTests();
@@ -614,6 +627,19 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     }
     if (disposed) return;
 
+    let loadedEnvironment: LoadedEnvironment | null = null;
+    if (scenario.bake.environment) {
+      try {
+        loadedEnvironment = await loadHdrEnvironment(scenario.bake.environment.url, {
+          intensity: scenario.bake.environment.intensity
+        });
+      } catch (error) {
+        if (!disposed) showFailure("hdri", error);
+        return;
+      }
+    }
+    if (disposed) return;
+
     updateBadges();
     stats.atlas.textContent = `${unwrapped.atlas.width}×${unwrapped.atlas.height}`;
     stats.charts.textContent = String(unwrapped.atlas.chartCount);
@@ -622,6 +648,8 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     try {
       display = new ThreeDisplay(viewportHost, {
         background: scenario.meta.background ?? null,
+        environment: loadedEnvironment?.texture ?? null,
+        environmentIntensity: loadedEnvironment?.environment.intensity ?? 1,
         camera: scenario.meta.camera
       });
       display.setScene(unwrapped, undefined, scenario.meta.camera);
@@ -647,7 +675,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     }
     if (disposed) return;
 
-    bakeScene = toBakeScene(unwrapped, scenario);
+    bakeScene = toBakeScene(unwrapped, scenario, loadedEnvironment?.environment);
     setBaking(false);
     status.textContent = "Ready to bake.";
     updateBadges();
@@ -674,7 +702,11 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
   };
 }
 
-function toBakeScene(unwrapped: UnwrappedScene, scenario: SceneDefinition): BakeScene {
+function toBakeScene(
+  unwrapped: UnwrappedScene,
+  scenario: SceneDefinition,
+  environment?: BakeEnvironment
+): BakeScene {
   const objects: BakeObject[] = [];
   for (const object of unwrapped.litObjects) {
     objects.push({
@@ -690,11 +722,13 @@ function toBakeScene(unwrapped: UnwrappedScene, scenario: SceneDefinition): Bake
   for (const object of unwrapped.emissiveObjects) {
     objects.push(emissiveBakeObject(object));
   }
-  return {
+  const scene: BakeScene = {
     atlas: { width: unwrapped.atlas.width, height: unwrapped.atlas.height },
     ambient: scenario.bake.ambient,
     objects
   };
+  if (environment) scene.environment = environment;
+  return scene;
 }
 
 function emissiveBakeObject(mesh: SceneMesh): BakeEmissiveObject {

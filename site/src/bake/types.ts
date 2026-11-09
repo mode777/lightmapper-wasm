@@ -33,10 +33,21 @@ export interface BakeEmissiveObject extends BakeObjectBase {
 
 export type BakeObject = BakeLitObject | BakeEmissiveObject;
 
+export interface BakeEnvironment {
+  width: number;
+  height: number;
+  /** Linear RGBA radiance, bottom-up: row 0 is the south pole (v = 0). */
+  data: Float32Array;
+  /** Linear radiance multiplier; defaults to 1. */
+  intensity?: number;
+}
+
 export interface BakeScene {
   atlas: { width: number; height: number };
   ambient: Vec3;
   objects: BakeObject[];
+  /** Optional equirectangular HDRI drawn as the bake skybox. */
+  environment?: BakeEnvironment;
 }
 
 export interface BakeStats {
@@ -73,6 +84,10 @@ export interface BakeOptions {
   zFar?: number;
   dilationPasses?: number;
   smooth?: boolean;
+  /** Hierarchical interpolation passes passed to lmCreate (0-8). */
+  interpolationPasses?: number;
+  /** Absolute radiance error below which lmCreate interpolates. */
+  interpolationThreshold?: number;
   onProgress?: (progress: BakeProgress) => void;
   onBounce?: (result: BakeResult) => void;
   signal?: AbortSignal;

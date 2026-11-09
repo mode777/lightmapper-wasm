@@ -8,7 +8,17 @@ import {
   uploadFloatTexture,
   type BufferSet
 } from "./gl";
-import { BAKE_FRAGMENT_SHADER, BAKE_VERTEX_SHADER } from "./shaders";
+import {
+  environmentIntensity,
+  environmentRayDirections,
+  validateBakeEnvironment
+} from "./environment";
+import {
+  BAKE_FRAGMENT_SHADER,
+  BAKE_VERTEX_SHADER,
+  ENVIRONMENT_FRAGMENT_SHADER,
+  ENVIRONMENT_VERTEX_SHADER
+} from "./shaders";
 import { computeBakeStats } from "./stats";
 import {
   BakeError,
@@ -99,6 +109,19 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
     color: requireUniform(gl, program, "u_color"),
     mode: requireUniform(gl, program, "u_mode")
   };
+
+  const environmentProgram = createProgram(gl, ENVIRONMENT_VERTEX_SHADER, ENVIRONMENT_FRAGMENT_SHADER);
+  const environmentUniforms = {
+    texture: requireUniform(gl, environmentProgram, "u_environment"),
+    intensity: requireUniform(gl, environmentProgram, "u_intensity"),
+    rays: [
+      requireUniform(gl, environmentProgram, "u_ray[0]"),
+      requireUniform(gl, environmentProgram, "u_ray[1]"),
+      requireUniform(gl, environmentProgram, "u_ray[2]")
+    ]
+  };
+  const environmentVao = gl.createVertexArray();
+  if (!environmentVao) throw new BakeError("could not create the environment VAO", "gl");
   const textureFilter = gl.getExtension("OES_texture_float_linear") ? gl.LINEAR : gl.NEAREST;
 
   let disposed = false;
@@ -126,6 +149,17 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
         Math.floor(bakeOptions.dilationPasses ?? DEFAULT_DILATION_PASSES)
       );
       const smooth = bakeOptions.smooth ?? true;
+      const interpolationPasses = Math.max(
+        0,
+        Math.min(8, Math.floor(bakeOptions.interpolationPasses ?? 2))
+      );
+      const interpolationThreshold = bakeOptions.interpolationThreshold ?? 0.01;
+      if (!Number.isFinite(interpolationThreshold) || interpolationThreshold < 0) {
+        throw new BakeError(
+          `interpolation threshold ${interpolationThreshold} must be finite and non-negative`,
+          "validation"
+        );
+      }
       const zNear = bakeOptions.zNear ?? 0.01;
       const zFar = bakeOptions.zFar ?? 100;
       const yieldToMain = bakeOptions.yieldToMain ?? defaultYield;
@@ -141,6 +175,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       let tempPtr = 0;
       let beginBuffers: ReturnType<LightmapperModule["makeBeginFrameBuffers"]> | null = null;
       let texture: WebGLTexture | null = null;
+      let environmentTexture: WebGLTexture | null = null;
       const heapObjects: HeapObject[] = [];
       const gpuObjects: GpuObject[] = [];
 
@@ -176,6 +211,15 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
           new Float32Array(floatCount),
           textureFilter
         );
+        if (scene.environment) {
+          environmentTexture = createFloatTexture(
+            gl,
+            scene.environment.width,
+            scene.environment.height,
+            scene.environment.data,
+            textureFilter
+          );
+        }
 
         gl.disable(gl.CULL_FACE);
         gl.enable(gl.DEPTH_TEST);
@@ -184,7 +228,28 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
         gl.disable(gl.BLEND);
         gl.colorMask(true, true, true, true);
 
+        const drawEnvironment = (view: Float32Array, projection: Float32Array): void => {
+          if (!environmentTexture || !scene.environment) return;
+          const rays = environmentRayDirections(view, projection);
+          gl.disable(gl.DEPTH_TEST);
+          gl.depthMask(false);
+          gl.useProgram(environmentProgram);
+          gl.uniform1i(environmentUniforms.texture, 0);
+          gl.uniform1f(environmentUniforms.intensity, environmentIntensity(scene.environment));
+          gl.uniform3f(environmentUniforms.rays[0], rays[0][0], rays[0][1], rays[0][2]);
+          gl.uniform3f(environmentUniforms.rays[1], rays[1][0], rays[1][1], rays[1][2]);
+          gl.uniform3f(environmentUniforms.rays[2], rays[2][0], rays[2][1], rays[2][2]);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, environmentTexture);
+          gl.bindVertexArray(environmentVao);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          gl.bindVertexArray(null);
+          gl.enable(gl.DEPTH_TEST);
+          gl.depthMask(true);
+        };
+
         const drawAll = (view: Float32Array, projection: Float32Array): void => {
+          drawEnvironment(view, projection);
           gl.useProgram(program);
           gl.uniformMatrix4fv(uniforms.view, false, view);
           gl.uniformMatrix4fv(uniforms.projection, false, projection);
@@ -216,8 +281,8 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
               scene.ambient[0],
               scene.ambient[1],
               scene.ambient[2],
-              2,
-              0.01,
+              interpolationPasses,
+              interpolationThreshold,
               0
             );
 
@@ -325,6 +390,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       } finally {
         for (const gpu of gpuObjects) deleteBufferSet(gl, gpu.buffers);
         if (texture) gl.deleteTexture(texture);
+        if (environmentTexture) gl.deleteTexture(environmentTexture);
         if (beginBuffers) beginBuffers.dispose();
         for (const heap of heapObjects) {
           module.free(heap.positions);
@@ -340,6 +406,8 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       if (disposed) return;
       disposed = true;
       gl.deleteProgram(program);
+      gl.deleteProgram(environmentProgram);
+      gl.deleteVertexArray(environmentVao);
       if (ownedCanvas) {
         gl.getExtension("WEBGL_lose_context")?.loseContext();
       }
@@ -380,6 +448,7 @@ function resolveContext(options: BakeHarnessOptions): ResolvedContext {
 }
 
 function validateBakeScene(scene: BakeScene): ValidatedScene {
+  validateBakeEnvironment(scene.environment);
   const { width, height } = scene.atlas;
   if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
     throw new BakeError(`invalid atlas dimensions ${width}x${height}`, "validation");

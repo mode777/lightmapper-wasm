@@ -10,8 +10,13 @@ const DEMOS_DIR = join(SITE_ROOT, "src", "demos");
 
 export const SHARED_FILES = ["geometry.ts", "types.ts", "sections.ts"];
 
+/** Extra rendered inputs, keyed by scenario id, relative to the site root. */
+const ENVIRONMENT_FILES = {
+  "hdri-studio": ["src/assets/environments/studio_small_09_1k.hdr"]
+};
+
 export function sourceFilesFor(id) {
-  return [`${id}.ts`, ...SHARED_FILES];
+  return [`${id}.ts`, ...SHARED_FILES, ...(ENVIRONMENT_FILES[id] ?? [])];
 }
 
 export function sourceHash(id) {
@@ -19,7 +24,8 @@ export function sourceHash(id) {
   for (const file of sourceFilesFor(id)) {
     hash.update(file);
     hash.update("\0");
-    hash.update(readFileSync(join(DEMOS_DIR, file)));
+    const path = file.startsWith("src/") ? join(SITE_ROOT, file) : join(DEMOS_DIR, file);
+    hash.update(readFileSync(path));
     hash.update("\0");
   }
   return hash.digest("hex");

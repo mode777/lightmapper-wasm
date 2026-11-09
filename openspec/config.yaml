@@ -26,13 +26,17 @@ context: |
 
   The public showcase lives under `site/` (AD-015): a private Vite + TypeScript
   consumer that links this checkout with `lightmapper-wasm: file:..`, is not in
-  the npm tarball and adds no runtime dependency. It has four procedural
-  scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`)
-  and a site-local, package-shaped raw-WebGL bake harness plus a three.js
-  display layer. The harness and display are planned for promotion as
-  `lightmapper-wasm/bake` (AD-018) and `lightmapper-wasm/three` (AD-019); until
-  then they stay under `site/src/bake/` and `site/src/display/`. Every lit mesh
-  uses one xatlas atlas with a `[0,1)` UV clamp (AD-016). The build workflow
+  the npm tarball and adds no runtime dependency. It has five procedural
+  scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
+  `hdri-studio`) and a site-local, package-shaped raw-WebGL bake harness plus a
+  three.js display layer. The harness supports an optional linear
+  equirectangular HDRI that is drawn as the bake skybox and shared with the
+  display background (AD-017); the standard `hdri-studio` scenario uses a
+  checked-in CC0 Poly Haven asset. The harness and display are planned for
+  promotion as `lightmapper-wasm/bake` (AD-018) and `lightmapper-wasm/three`
+  (AD-019); until then they stay under `site/src/bake/` and
+  `site/src/display/`. Every lit mesh uses one xatlas atlas with a `[0,1)` UV
+  clamp (AD-016). The build workflow
   uploads the tested `dist` artifact, the `site` job builds and tests from it
   with `SITE_BASE=/lightmapper-wasm/`, and the `deploy` job publishes to Pages
   only on `Main` pushes or manual dispatch. Checked-in thumbnails carry scene

@@ -2,8 +2,8 @@
 
 import { launchBrowser, openPage, siteRoot, startDevServer, waitForExpression } from "./browser.mjs";
 
-const BAKE_TIMEOUT_MS = 240_000;
-const FAILURE_ROUTES = ["webgl2", "float", "lightmapper", "xatlas"];
+const BAKE_TIMEOUT_MS = 600_000;
+const FAILURE_ROUTES = ["webgl2", "float", "lightmapper", "xatlas", "hdri"];
 
 function check(name, condition, detail = "") {
   if (condition) {
@@ -15,8 +15,13 @@ function check(name, condition, detail = "") {
 }
 
 async function openRoute(browser, base, path, label) {
-  const { page, pageErrors } = await openPage(browser, `${base}${path}`, { label, timeout: 30_000 });
-  return { page, pageErrors };
+  const requests = [];
+  const { page, pageErrors } = await openPage(browser, `${base}${path}`, {
+    label,
+    timeout: 30_000,
+    requests
+  });
+  return { page, pageErrors, requests };
 }
 
 async function waitForDemoState(page, timeout = BAKE_TIMEOUT_MS) {
@@ -34,7 +39,7 @@ async function checkGallery(browser, base, results) {
       timeout: 60_000
     });
     const count = await page.$$eval(".scene-card", (cards) => cards.length);
-    results.push(check("gallery renders four scenarios", count === 4, `saw ${count}`));
+    results.push(check("gallery renders five scenarios", count === 5, `saw ${count}`));
 
     await page.click('[data-filter="ambient"]');
     const visible = await page.$$eval(".scene-card", (cards) =>
@@ -44,9 +49,21 @@ async function checkGallery(browser, base, results) {
       check("gallery filter narrows to ambient", visible.length === 1 && visible[0] === "ao-studio", visible.join(","))
     );
 
+    await page.click('[data-filter="environment"]');
+    const environmentVisible = await page.$$eval(".scene-card", (cards) =>
+      cards.filter((card) => !card.hidden).map((card) => card.dataset.scenario)
+    );
+    results.push(
+      check(
+        "gallery filter narrows to the environment scenario",
+        environmentVisible.length === 1 && environmentVisible[0] === "hdri-studio",
+        environmentVisible.join(",")
+      )
+    );
+
     await page.click('[data-filter="all"]');
     const restored = await page.$$eval(".scene-card", (cards) => cards.filter((card) => !card.hidden).length);
-    results.push(check("gallery filter restores all scenarios", restored === 4, `saw ${restored}`));
+    results.push(check("gallery filter restores all scenarios", restored === 5, `saw ${restored}`));
 
     await page.waitForFunction(
       () => [...document.querySelectorAll(".card-preview img")].every((image) => image.complete),
@@ -58,10 +75,30 @@ async function checkGallery(browser, base, results) {
     results.push(
       check(
         "gallery loads the checked-in thumbnails",
-        thumbnails.length === 4 && thumbnails.every((image) => image.width > 0 && image.src.includes(".webp")),
+        thumbnails.length === 5 && thumbnails.every((image) => image.width > 0 && image.src.includes(".webp")),
         JSON.stringify(thumbnails)
       )
     );
+
+    const attribution = await page.$eval(".hero-attribution a", (anchor) => ({
+      text: anchor.textContent ?? "",
+      href: anchor.getAttribute("href") ?? ""
+    }));
+    results.push(
+      check(
+        "gallery attributes lightmapper.h with an upstream link",
+        attribution.text.includes("lightmapper.h") &&
+          attribution.href === "https://github.com/ands/lightmapper",
+        JSON.stringify(attribution)
+      )
+    );
+
+    const featured = await page.$$eval(".site-nav a, .hero-actions a", (links) =>
+      links
+        .map((link) => link.getAttribute("href") ?? "")
+        .filter((href) => href.includes("/p/"))
+    );
+    results.push(check("gallery does not feature one scenario link", featured.length === 0, featured.join(",")));
     results.push(check("gallery has no page errors", pageErrors.length === 0, pageErrors.map((e) => e.message).join("; ")));
   } finally {
     await page.close();
@@ -69,7 +106,7 @@ async function checkGallery(browser, base, results) {
 }
 
 async function checkPreviewBake(browser, base, id, results) {
-  const { page, pageErrors } = await openRoute(browser, base, `/#/p/${id}?preview=1`, id);
+  const { page, pageErrors, requests } = await openRoute(browser, base, `/#/p/${id}?preview=1`, id);
   try {
     await waitForDemoState(page);
     const state = await page.evaluate(() => {
@@ -144,6 +181,23 @@ async function checkPreviewBake(browser, base, id, results) {
     await page.evaluate(() => document.querySelector('[data-tab="3d"]')?.click());
     const bakesAfter = await page.evaluate(() => window.__showcase?.bakes);
     results.push(check(`${id} switching tabs does not re-bake`, bakesAfter === bakesBefore, `${bakesBefore} -> ${bakesAfter}`));
+
+    if (id === "hdri-studio") {
+      const hdriRequests = requests.filter((url) => url.includes("studio_small_09_1k.hdr"));
+      const external = requests.filter(
+        (url) => url.includes("polyhaven.com") || url.includes("polyhaven.org")
+      );
+      results.push(
+        check(
+          `${id} loads the HDRI from the site origin`,
+          hdriRequests.length > 0 &&
+            hdriRequests.every((url) => url.startsWith(base)) &&
+            external.length === 0,
+          JSON.stringify({ hdriRequests, external })
+        )
+      );
+    }
+
     results.push(check(`${id} has no page errors`, pageErrors.length === 0, pageErrors.map((e) => e.message).join("; ")));
   } finally {
     await page.close();
@@ -151,7 +205,13 @@ async function checkPreviewBake(browser, base, id, results) {
 }
 
 async function checkFailureState(browser, base, mode, results) {
-  const expected = { webgl2: "webgl2", float: "ext_color_buffer_float", lightmapper: "lightmapper-wasm", xatlas: "xatlas-wasm" }[mode];
+  const expected = {
+    webgl2: "webgl2",
+    float: "ext_color_buffer_float",
+    lightmapper: "lightmapper-wasm",
+    xatlas: "xatlas-wasm",
+    hdri: "hdri"
+  }[mode];
   const { page, pageErrors } = await openRoute(
     browser,
     base,
@@ -197,6 +257,7 @@ async function main() {
     await checkGallery(browser, server.url, results);
     await checkPreviewBake(browser, server.url, "cornell-box", results);
     await checkPreviewBake(browser, server.url, "tabletop-atlas", results);
+    await checkPreviewBake(browser, server.url, "hdri-studio", results);
     for (const mode of FAILURE_ROUTES) {
       await checkFailureState(browser, server.url, mode, results);
     }

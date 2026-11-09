@@ -15,9 +15,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "fd8e0eb8157583eadb4e9706a925c59842a65ebd88a9ad256c3b019220d26dc5",
+      "sourceHash": "10ba02ee2d1dd071dc06eafc2fb561faea9a398681a0adff0d5fc66e636a3f74",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T11:54:39.096Z"
+      "capturedAt": "2026-11-09T15:20:48.743Z"
     },
     "cornell-box": {
       "file": "cornell-box.webp",
@@ -25,9 +25,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "00ea86acd73d344d3dbf01ba38c8b7effc5eae30f8fbbe38283b0aeff6b6dfc7",
+      "sourceHash": "74937af9419760701f3ef64ed2377ff311d8a633533c3449c73dcc1fef598be3",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T11:55:24.707Z"
+      "capturedAt": "2026-11-09T15:21:24.734Z"
     },
     "emissive-alcove": {
       "file": "emissive-alcove.webp",
@@ -35,9 +35,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "9cd5c99cbd5abe7948aa0289e0ed02a534d28b2a074357816db0ea3b718e33d2",
+      "sourceHash": "a12766a8682d69e7b215f7c0ecdeb900b9a284ea68d08188157cbb27b461bf08",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T11:58:22.454Z"
+      "capturedAt": "2026-11-09T15:24:08.486Z"
     },
     "tabletop-atlas": {
       "file": "tabletop-atlas.webp",
@@ -45,9 +45,19 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "faf403e04d8adfe1f069ab8e91b2422dc8b6619518008927b2ac21cc0dbdebb8",
+      "sourceHash": "d00f2abd4c8d060d424f2266f161a0c6d53c7551edf803c47282751ca00582ca",
       "previewVersion": 1,
-      "capturedAt": "2026-11-09T12:00:25.225Z"
+      "capturedAt": "2026-11-09T15:26:03.370Z"
+    },
+    "hdri-studio": {
+      "file": "hdri-studio.webp",
+      "width": 640,
+      "height": 400,
+      "pixelWidth": 1280,
+      "pixelHeight": 800,
+      "sourceHash": "a49747868ea05f09bbec6dd5a41a078c2d26d4308e3aeea14efe3246e412f676",
+      "previewVersion": 1,
+      "capturedAt": "2026-11-09T15:26:41.394Z"
     }
   }
 }

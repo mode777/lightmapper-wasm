@@ -14,7 +14,8 @@
     "test:harness": "node scripts/harness-test.mjs",
     "test:smoke": "node scripts/bake-smoke.mjs",
     "build:check": "node scripts/check-build.mjs",
-    "capture:thumbnails": "node scripts/capture-thumbnails.mjs"
+    "capture:thumbnails": "node scripts/capture-thumbnails.mjs",
+    "fetch:hdri": "node scripts/fetch-hdri.mjs"
   },
   "dependencies": {
     "highlight.js": "^11.12.0",

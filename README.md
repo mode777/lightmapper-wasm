@@ -214,17 +214,21 @@ private Vite + TypeScript consumer that links this checkout with
 `lightmapper-wasm: file:..`; it is **not** part of the npm tarball and adds no
 runtime dependency to the package.
 
-The four scenarios are `ao-studio` (ambient-only AO), `cornell-box`
-(multi-bounce GI and color bleeding), `emissive-alcove` (HDR neon emitters) and
-`tabletop-atlas` (multiple meshes in one shared xatlas atlas). Every scenario
+The five scenarios are `ao-studio` (ambient-only AO), `cornell-box`
+(multi-bounce GI and color bleeding), `emissive-alcove` (HDR neon emitters),
+`tabletop-atlas` (multiple meshes in one shared xatlas atlas) and `hdri-studio`
+(environment-only lighting from a checked-in Poly Haven HDRI). Every scenario
 unwraps its lit meshes through `xatlas-wasm`, bakes with the raw-WebGL harness
-and displays the result with three.js.
+and displays the result with three.js. The gallery credits the underlying
+[`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and
+global navigation does not feature an individual scenario; the Cornell box is
+one catalog example.
 
 ```sh
 npm ci --prefix site
 npm run dev --prefix site        # local gallery at http://127.0.0.1:5173/
 npm run check --prefix site      # TypeScript
-npm test --prefix site           # catalog, scene, atlas and thumbnail tests
+npm test --prefix site           # catalog, scene, atlas, environment and thumbnail tests
 npm run test:harness --prefix site   # headless harness + display checks
 npm run test:smoke --prefix site     # gallery, preview bakes and failure states
 SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
@@ -240,9 +244,10 @@ rebuilt in the site job and `lightmapper-wasm` is never installed from the npm
 registry there.
 
 `?preview=1` hides the page chrome and fixes the stage to 16:10 for thumbnail
-capture; `?fail=webgl2|float|lightmapper|xatlas` exercises the capability and
-asset failure states. See [`site/README.md`](site/README.md) for the scene
-contract, atlas rules, harness/display boundaries and recapture procedure.
+capture; `?fail=webgl2|float|lightmapper|xatlas|hdri` exercises the capability
+and asset failure states. See [`site/README.md`](site/README.md) for the scene
+contract, atlas rules, HDRI provenance, harness/display boundaries and
+recapture procedure.
 
 ## Testing
 

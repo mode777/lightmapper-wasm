@@ -20,7 +20,8 @@ export const EXPECTED_SCENARIO_IDS = [
   "ao-studio",
   "cornell-box",
   "emissive-alcove",
-  "tabletop-atlas"
+  "tabletop-atlas",
+  "hdri-studio"
 ] as const;
 
 export type ExpectedScenarioId = (typeof EXPECTED_SCENARIO_IDS)[number];
@@ -40,6 +41,7 @@ export function isQuality(value: string): value is Quality {
 export function sectionCoverage(scenarios: readonly SceneDefinition[]): Record<SceneSection, number> {
   const counts: Record<SceneSection, number> = {
     ambient: 0,
+    environment: 0,
     gi: 0,
     emissive: 0,
     "multi-object": 0

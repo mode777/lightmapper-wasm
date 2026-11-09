@@ -10,7 +10,7 @@ import {
   THUMBNAIL_MANIFEST,
   THUMBNAIL_SETTINGS
 } from "../src/demos/coverage";
-import { SHARED_FILES, sourceHash } from "../scripts/source-hash.mjs";
+import { SHARED_FILES, sourceFilesFor, sourceHash } from "../scripts/source-hash.mjs";
 
 interface ManifestEntry {
   file: string;
@@ -117,6 +117,13 @@ describe("thumbnail manifest", () => {
     expect(manifest.scenarios["tabletop-atlas"].sourceHash).not.toBe(sourceHash("cornell-box"));
     expect(manifest.previewVersion).toBe(PREVIEW_VERSION);
     expect(SHARED_FILES).toEqual([...SHARED_SOURCE_FILES]);
+  });
+
+  it("includes the checked-in HDRI in the hdri-studio source hash", () => {
+    const environment = "src/assets/environments/studio_small_09_1k.hdr";
+    expect(sourceFilesFor("hdri-studio")).toContain(environment);
+    expect(sourceFilesFor("cornell-box")).not.toContain(environment);
+    expect(sourceHash("hdri-studio")).not.toBe(sourceHash("cornell-box"));
   });
 
   it("has no orphan thumbnail images", () => {

@@ -24,6 +24,9 @@ implemented) · **Superseded** (replaced by a newer ADR).
 | AD-012 | Generate TypeScript declarations and ABI checks from the C surface instead of handwriting them | Proposed |
 | AD-013 | Support Web Workers via `OffscreenCanvas`, or document main-thread-only explicitly | Proposed |
 | AD-014 | Report readback failures on stderr, skip the transfer and keep the bake running; no public error API in this change | Accepted |
+| AD-015 | The showcase is a separate consumer deployed from the tested artifact | Accepted |
+| AD-016 | Use xatlas for every showcase lightmap atlas with a `[0,1)` UV clamp | Accepted |
+| AD-017 | Bake linear equirectangular HDRI environments in the showcase | Accepted |
 
 ---
 
@@ -287,3 +290,25 @@ remains dependency-free. The Atlas view and the scene tests depend on the same
 pipeline, and the `[0,1)` bound is a tested invariant rather than a convention.
 Promoting the harness and display to package entries (AD-018/AD-019) keeps this
 UV contract unchanged.
+
+## AD-017 — HDRI environment baking in the showcase {#ad-017}
+
+**Context.** The showcase can bake constant ambient colors and emissive
+geometry but not the HDR environment maps used by most studio and product
+scenes. The C library already integrates whatever the caller draws during each
+hemisphere pass, so environment lighting does not require a C change.
+
+**Decision.** The site-local bake harness accepts an optional linear
+equirectangular HDR environment, draws it as a fullscreen skybox for every
+lightmapper hemisphere side before scene geometry, and uses the same decoded
+data as a linear equirectangular three.js background. The environment asset is
+a checked-in CC0 Poly Haven HDRI with recorded provenance and a developer
+refresh script; the site does not fetch it at runtime. No C header, wasm build,
+loader or package API changes.
+
+**Consequences.** The showcase gains an `hdri-studio` scenario and an
+`environment` section; the harness keeps its display-agnostic boundary; the
+display gains an equirectangular background path; and the asset is site-only
+and excluded from the npm tarball. Environment orientation, intensity,
+validation and lifecycle are covered by headless WebGL2 tests. The future
+`lightmapper-wasm/bake` promotion (AD-018) must preserve the environment input.

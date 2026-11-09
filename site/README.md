@@ -7,6 +7,11 @@ no runtime dependency to the package.
 
 Live site: <https://mode777.github.io/lightmapper-wasm/>
 
+The gallery credits the underlying single-header library as **Based on
+[lightmapper.h](https://github.com/ands/lightmapper) by Andreas Mantler**.
+Global navigation links only to the gallery, repository and package; the
+Cornell box is one catalog example, not a featured shortcut.
+
 ## Scenarios
 
 | id | Technique | Bake |
@@ -15,8 +20,9 @@ Live site: <https://mode777.github.io/lightmapper-wasm/>
 | `cornell-box` | Multi-bounce GI, color bleeding, emissive ceiling | 1024² atlas, H64, 3 bounces, black ambient |
 | `emissive-alcove` | Arbitrary emissive geometry and HDR neon bars | 512² atlas, H64, 2 bounces, black ambient |
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
+| `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
 
-Sections are technique filters: `ambient`, `gi`, `emissive` and
+Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
 `multi-object`. “Shared atlas”, “xatlas” and “HDR” are feature labels because
 every scenario uses the same UV pipeline.
 
@@ -50,12 +56,13 @@ CHROME_SHELL_PATH=… npm run test:harness --prefix site   # bake harness + disp
 CHROME_SHELL_PATH=… npm run test:smoke --prefix site     # gallery, previews, failures
 ```
 
-The Node suite covers the catalog metadata, scene geometry, xatlas contracts,
-raw source coverage and checked-in thumbnails. The browser suites run in
-headless Chrome with ANGLE SwiftShader: `test:harness` bakes a lit quad under an
-emissive ceiling and a two-object shared atlas, checks progress/cancellation
-and exercises the display texture/mode/disposal paths. `test:smoke` drives the
-gallery, the Cornell box and tabletop preview routes, the tab views and the
+The Node suite covers catalog metadata, scene geometry, xatlas contracts, raw
+source coverage, HDRI provenance and checked-in thumbnails. The browser suites
+run in headless Chrome with ANGLE SwiftShader: `test:harness` bakes a lit quad
+under an emissive ceiling, a two-object shared atlas and environment-only
+scenes, checks progress/cancellation and exercises the display
+texture/mode/background/disposal paths. `test:smoke` drives the gallery, the
+Cornell box, tabletop and HDRI studio preview routes, the tab views and the
 forced capability/asset failure routes.
 
 ## Scene contract
@@ -117,6 +124,35 @@ is rejected. Emissive-only meshes are drawn during the bake but never added to
 the atlas. The tests assert `[0,1)` bounds, finite values and non-degenerate UV
 triangles for every scenario.
 
+## HDRI environments
+
+The `hdri-studio` scenario uses a checked-in 1k CC0 HDR from Poly Haven:
+
+- **Asset:** `studio_small_09` by Sergej Majboroda,
+  <https://polyhaven.com/a/studio_small_09>
+- **Local file:** `src/assets/environments/studio_small_09_1k.hdr`
+  (1,024 × 512, 1,615,248 bytes, MD5
+  `d5d7eb9d26d341d6aa4d11c1a54fd97c`)
+- **License:** CC0 1.0 Universal; provenance is recorded in
+  `src/assets/environments/README.md`
+
+Refresh and verify the asset:
+
+```sh
+npm run fetch:hdri --prefix site -- --check   # offline size/MD5 check
+npm run fetch:hdri --prefix site -- --force   # resolve via the Poly Haven API and replace
+```
+
+The script resolves the download URL through
+`https://api.polyhaven.com/files/studio_small_09`. The site never fetches the
+HDRI from Poly Haven at runtime and CI never needs the network for it.
+
+The Radiance file is decoded once with three.js `HDRLoader` and flipped into
+the bottom-up convention shared by the bake harness and the display: row 0 is
+the south pole (`v = 0`) and the last row is the north pole (`v = 1`). The
+data is linear RGBA float radiance; the scene's intensity multiplier is applied
+separately by the bake skybox and the display background.
+
 ## Harness and display boundaries
 
 `src/bake/` is a display-agnostic raw-WebGL harness. It owns a hidden WebGL2
@@ -126,10 +162,33 @@ for every object, uploads the CPU atlas to the GPU once per bounce, and
 returns a `Float32Array` lightmap plus statistics. It imports only
 `lightmapper-wasm` and local bake modules; it never imports three.js or xatlas.
 
+A scene may also carry an optional `environment`:
+
+```ts
+interface BakeEnvironment {
+  width: number;
+  height: number;
+  data: Float32Array; // linear RGBA, bottom-up, width * height * 4
+  intensity?: number; // default 1
+}
+```
+
+The harness validates the dimensions, data length, finite non-negative
+radiance and intensity before creating GPU resources. When an environment is
+present it uploads one `RGBA32F` texture per bake, draws a fullscreen
+equirectangular skybox with alpha 1.0 before the scene for every lightmapper
+hemisphere side, disables depth test and depth writes for that draw, then
+restores the depth state and deletes the texture in `finally`. Row 0 is the
+south pole (`v = 0`); the last row is the north pole. A scene without an
+environment keeps the existing ambient/emissive behavior and the `lmCreate`
+clear color.
+
 `src/display/` consumes a completed `BakeResult` and never bakes. It creates a
 linear `THREE.DataTexture`, lit/emissive materials, lit/unlit/wireframe modes,
-orbit controls, resizing and ACES tone mapping. Its import-boundary test rejects
-any runtime import from `src/bake/` and any `lmCreate`/`lmBegin`/`lmEnd` call.
+orbit controls, resizing and ACES tone mapping. It also accepts an optional
+equirectangular HDRI background texture, applies its intensity and disposes it
+with the display. Its import-boundary test rejects any runtime import from
+`src/bake/` and any `lmCreate`/`lmBegin`/`lmEnd` call.
 
 Both layers are package-shaped but site-local for now. `lightmapper-wasm/bake`
 and `lightmapper-wasm/three` are follow-up changes (AD-018/AD-019).
@@ -172,7 +231,7 @@ together.
   affected thumbnails. `npm test --prefix site` fails on stale hashes.
 - A change to the viewport, lighting, materials or preview CSS can change the
   captured image without changing a scene source. Bump `PREVIEW_VERSION` in
-  `src/demos/coverage.ts` and recapture all four thumbnails.
+  `src/demos/coverage.ts` and recapture all five thumbnails.
 - Do not hand-edit the manifest or re-encode images outside the capture script.
 
 The gallery renders a CSS fallback (`src/styles.css`, `.card-fallback`) when an
@@ -196,6 +255,9 @@ The site code in this repository is original and covered by the repository's
 [Unlicense](../LICENSE). It consumes:
 
 - `lightmapper-wasm` (Unlicense) from this checkout.
+- [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler
+  (public domain), compiled to WebAssembly by the package.
+- `studio_small_09` HDRI by Sergej Majboroda / Poly Haven (CC0 1.0).
 - `xatlas-wasm` (MIT).
 - `three` (MIT).
 - `highlight.js` (BSD-3-Clause).

@@ -1,9 +1,17 @@
 import * as THREE from "three";
 import { createBakeHarness, type BakeHarness } from "../src/bake/harness";
 import { createProgram } from "../src/bake/gl";
-import { isAbortError, type BakeEmissiveObject, type BakeLitObject, type BakeResult } from "../src/bake/types";
+import {
+  isAbortError,
+  type BakeEmissiveObject,
+  type BakeEnvironment,
+  type BakeLitObject,
+  type BakeResult,
+  type BakeScene
+} from "../src/bake/types";
 import { ThreeDisplay } from "../src/display/three";
 import { createLightmapTexture, lightmapFilterFor } from "../src/display/materials";
+import { createEnvironmentTexture } from "../src/environment/hdr";
 import type { UnwrappedObject, UnwrappedScene } from "../src/atlas/types";
 
 interface CheckResult {
@@ -172,6 +180,65 @@ function twoObjectScene() {
   };
 }
 
+function constantEnvironment(
+  color: [number, number, number],
+  intensity = 1,
+  width = 4,
+  height = 2
+): BakeEnvironment {
+  const data = new Float32Array(width * height * 4);
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = color[0];
+    data[i + 1] = color[1];
+    data[i + 2] = color[2];
+    data[i + 3] = 1;
+  }
+  return { width, height, data, intensity };
+}
+
+function topBottomEnvironment(
+  top: [number, number, number],
+  bottom: [number, number, number],
+  width = 8,
+  height = 4
+): BakeEnvironment {
+  const data = new Float32Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    const color = y < height / 2 ? bottom : top;
+    for (let x = 0; x < width; x += 1) {
+      const i = (y * width + x) * 4;
+      data[i] = color[0];
+      data[i + 1] = color[1];
+      data[i + 2] = color[2];
+      data[i + 3] = 1;
+    }
+  }
+  return { width, height, data, intensity: 1 };
+}
+
+function environmentOnlyScene(environment: BakeEnvironment, size = 4): BakeScene {
+  return {
+    atlas: { width: 64, height: 64 },
+    ambient: [0, 0, 0],
+    environment,
+    objects: [
+      litSurface({
+        name: "environment floor",
+        x0: -size,
+        x1: size,
+        z0: -size,
+        z1: size,
+        y: 0,
+        u0: 0.05,
+        v0: 0.05,
+        u1: 0.45,
+        v1: 0.45,
+        color: [0.8, 0.8, 0.8]
+      })
+    ]
+  };
+}
+
 function unwrappedQuad(): UnwrappedScene {
   const surface = litSurface({
     name: "test quad",
@@ -220,6 +287,95 @@ async function main(): Promise<void> {
       for (const value of result.lightmap) assert(Number.isFinite(value), "non-finite lightmap value");
       assert(result.stats.max > 0, "lightmap is black");
       assert(regionMax(result, 0.05, 0.05, 0.45, 0.45) > 0, "baked region is black");
+    });
+
+    await checkAsync("bakes a constant environment with black ambient and no emitters", async () => {
+      const result = await harness!.bake(
+        environmentOnlyScene(constantEnvironment([0.8, 0.6, 0.4], 1)),
+        { hemisphereSize: 16, bounces: 1, dilationPasses: 1 }
+      );
+      for (const value of result.lightmap) assert(Number.isFinite(value), "non-finite lightmap value");
+      assert(result.stats.max > 0, "constant environment produced a black lightmap");
+      assert(regionMax(result, 0.05, 0.05, 0.45, 0.45) > 0, "environment floor region is black");
+      assert(harness!.gl.getError() === harness!.gl.NO_ERROR, "GL error after environment bake");
+    });
+
+    await checkAsync("does not light the scene with a black environment", async () => {
+      const result = await harness!.bake(
+        environmentOnlyScene(constantEnvironment([0, 0, 0], 1)),
+        { hemisphereSize: 16, bounces: 1, dilationPasses: 0 }
+      );
+      assert(result.stats.max < 1e-6, `black environment produced ${result.stats.max}`);
+      assert(result.stats.nonBlackRatio === 0, "black environment marked pixels as lit");
+    });
+
+    await checkAsync("scales environment lighting with intensity", async () => {
+      const scene = environmentOnlyScene(constantEnvironment([0.5, 0.5, 0.5], 1));
+      const low = await harness!.bake(scene, { hemisphereSize: 16, bounces: 1, dilationPasses: 0 });
+      const high = await harness!.bake(
+        { ...scene, environment: constantEnvironment([0.5, 0.5, 0.5], 2) },
+        { hemisphereSize: 16, bounces: 1, dilationPasses: 0 }
+      );
+      assert(high.stats.mean > low.stats.mean, "higher intensity did not increase radiance");
+    });
+
+    await checkAsync("uses the environment's top hemisphere for an up-facing surface", async () => {
+      const topBright = await harness!.bake(
+        environmentOnlyScene(topBottomEnvironment([2, 2, 2], [0, 0, 0]), 20),
+        { hemisphereSize: 32, bounces: 1, dilationPasses: 1 }
+      );
+      const bottomBright = await harness!.bake(
+        environmentOnlyScene(topBottomEnvironment([0, 0, 0], [2, 2, 2]), 20),
+        { hemisphereSize: 32, bounces: 1, dilationPasses: 1 }
+      );
+      assert(topBright.stats.max > 0, "top-bright environment did not light the floor");
+      assert(
+        bottomBright.stats.max < topBright.stats.max * 0.25,
+        `bottom-bright environment leaked light: ${bottomBright.stats.max} vs ${topBright.stats.max}`
+      );
+    });
+
+    await checkAsync("rejects an invalid environment with a clear error", async () => {
+      const scene = environmentOnlyScene(constantEnvironment([1, 1, 1]));
+      scene.environment = { ...scene.environment!, data: new Float32Array(4) };
+      let error: unknown = null;
+      try {
+        await harness!.bake(scene, { hemisphereSize: 8, bounces: 1 });
+      } catch (caught) {
+        error = caught;
+      }
+      assert(error, "invalid environment was accepted");
+      assert(errorMessage(error).includes("environment"), "error does not name the environment");
+    });
+
+    await checkAsync("recovers after cancelling an environment bake", async () => {
+      const controller = new AbortController();
+      let aborted = false;
+      const promise = harness!.bake(
+        environmentOnlyScene(constantEnvironment([1, 1, 1]), 8),
+        {
+          hemisphereSize: 32,
+          bounces: 4,
+          dilationPasses: 1,
+          signal: controller.signal,
+          onProgress: (progress) => {
+            if (!aborted && progress.stage === "bounce") {
+              aborted = true;
+              controller.abort();
+            }
+          }
+        }
+      );
+      let abortedError: unknown = null;
+      try {
+        await promise;
+      } catch (error) {
+        abortedError = error;
+      }
+      assert(abortedError, "environment bake completed instead of aborting");
+      assert(isAbortError(abortedError), `unexpected abort error: ${errorMessage(abortedError)}`);
+      const next = await harness!.bake(singleScene(), { hemisphereSize: 16, bounces: 1 });
+      assert(next.stats.max > 0, "bake after environment cancellation did not produce light");
     });
 
     await checkAsync("shares one atlas between two lit objects and uploads once per bounce", async () => {
@@ -375,6 +531,73 @@ async function main(): Promise<void> {
       } finally {
         display.dispose();
         container.remove();
+      }
+    });
+
+    await checkAsync("applies an equirectangular HDRI background and disposes it", async () => {
+      const texture = createEnvironmentTexture(constantEnvironment([0.5, 0.5, 0.5]));
+      const container = document.createElement("div");
+      container.style.width = "96px";
+      container.style.height = "64px";
+      document.body.appendChild(container);
+      const display = new ThreeDisplay(container, {
+        environment: texture,
+        environmentIntensity: 2
+      });
+      try {
+        assert(display.scene.background === texture, "environment is not the scene background");
+        assert(display.backgroundTexture === texture, "display does not expose the environment texture");
+        assert(
+          texture.mapping === THREE.EquirectangularReflectionMapping,
+          "environment mapping is not equirectangular"
+        );
+        assert(texture.colorSpace === THREE.LinearSRGBColorSpace, "environment is not linear");
+        assert(
+          Math.abs(display.scene.backgroundIntensity - 2) < 1e-9,
+          "background intensity was not applied"
+        );
+
+        display.setEnvironment(texture, 1.5);
+        assert(
+          Math.abs(display.scene.backgroundIntensity - 1.5) < 1e-9,
+          "setEnvironment did not update intensity"
+        );
+
+        let disposed = false;
+        texture.addEventListener("dispose", () => {
+          disposed = true;
+        });
+        display.dispose();
+        assert(disposed, "environment texture was not disposed with the display");
+      } finally {
+        if (!display.isDisposed) display.dispose();
+        container.remove();
+      }
+    });
+
+    await checkAsync("keeps solid and transparent backgrounds working", async () => {
+      const solidContainer = document.createElement("div");
+      solidContainer.style.width = "80px";
+      solidContainer.style.height = "50px";
+      document.body.appendChild(solidContainer);
+      const solid = new ThreeDisplay(solidContainer, { background: [0.1, 0.2, 0.3] });
+      try {
+        assert(solid.scene.background instanceof THREE.Color, "solid background was not applied");
+      } finally {
+        solid.dispose();
+        solidContainer.remove();
+      }
+
+      const transparentContainer = document.createElement("div");
+      transparentContainer.style.width = "80px";
+      transparentContainer.style.height = "50px";
+      document.body.appendChild(transparentContainer);
+      const transparent = new ThreeDisplay(transparentContainer);
+      try {
+        assert(transparent.scene.background === null, "transparent background is not null");
+      } finally {
+        transparent.dispose();
+        transparentContainer.remove();
       }
     });
 
