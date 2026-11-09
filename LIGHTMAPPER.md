@@ -4,6 +4,12 @@ A browser-ready JavaScript/WebAssembly wrapper around [ands/lightmapper](https:/
 
 This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes every public C function through a thin, type-safe JavaScript API. It handles WASM heap memory management, Emscripten WebGL context binding, and float-texture capability probing automatically.
 
+> **Current release line (`0.1.2`):** the default entry (`lightmapper-wasm`)
+> ships a separate `dist/lightmapper.wasm` and fetches it at initialization;
+> the `lightmapper-wasm/single` entry embeds the wasm as a base64 payload for
+> offline/`file://` use. The remaining build and package gaps are tracked in
+> [`docs/wasm-improvements.md`](https://github.com/mode777/lightmapper-wasm/blob/Main/docs/wasm-improvements.md).
+
 ---
 
 ## Table of Contents
@@ -11,6 +17,7 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 1. [Module Initialization](#module-initialization)
    - [`createLightmapperModule(options?)`](#createlightmappermoduleoptions)
    - [`CreateLightmapperModuleOptions`](#createlightmappermoduleoptions-1)
+   - [Current loading model](#current-loading-model)
 2. [WebGL Context Management](#webgl-context-management)
 3. [WASM Heap Memory Helpers](#wasm-heap-memory-helpers)
    - [Allocation](#allocation)
@@ -48,7 +55,7 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 function createLightmapperModule(options?: CreateLightmapperModuleOptions): Promise<LightmapperModule>;
 ```
 
-Loads the WASM binary, resolves a WebGL2 context, performs a float-texture capability probe, and returns the fully initialized `LightmapperModule`.
+Initializes the wasm module, resolves a WebGL2 context, performs a float-texture capability probe, registers the context with Emscripten and returns the fully initialized `LightmapperModule`.
 
 **Returns** a `Promise<LightmapperModule>` — the single entry point for all subsequent API calls.
 
@@ -58,8 +65,10 @@ Loads the WASM binary, resolves a WebGL2 context, performs a float-texture capab
 |---|---|---|---|
 | `webglContext` | `WebGL2RenderingContext` | — | Existing WebGL2 context. Takes priority over `canvas`. |
 | `canvas` | `HTMLCanvasElement \| OffscreenCanvas` | — | Canvas to obtain a WebGL2 context from. Ignored if `webglContext` is set. |
-| `moduleFactory` | `(opts?) => Promise<any>` | auto-import | Custom Emscripten module factory. Defaults to dynamic import of the build output. |
-| `wasmModuleOptions` | `Record<string, unknown>` | `{}` | Options forwarded to the Emscripten factory (e.g. `locateFile`). |
+| `moduleFactory` | `(opts?) => Promise<any>` | auto | Custom Emscripten module factory. Defaults to the inlined factory in `dist/index.js`, or a dynamic import of the build output in the source layout. Asset resolution is skipped when a factory is supplied. |
+| `wasmModuleOptions` | `Record<string, unknown>` | `{}` | Options forwarded to the Emscripten factory. A `wasmBinary` value here is a raw passthrough and wins over the loader options below; `locateFile` is not used by the loader’s asset resolution. |
+| `wasmBinary` | `ArrayBuffer \| Uint8Array` | — | Pre-fetched wasm bytes. Supplying them skips the asset fetch and wins over `locateWasm` and the default URL. |
+| `locateWasm` | `(filename: string) => string \| URL` | auto | Returns the wasm asset location to fetch instead of the default `new URL("./lightmapper.wasm", import.meta.url)` beside the entry. Ignored for the `lightmapper-wasm/single` entry and for custom `moduleFactory` callers. |
 | `emscriptenContextHandle` | `number` | — | An already-registered Emscripten WebGL context handle. Skips auto-discovery. |
 | `autoRegisterEmscriptenContext` | `boolean` | `true` | Auto-register the WebGL2 context with Emscripten if no handle is found. |
 | `emscriptenWebGLContextAttributes` | `Record<string, unknown>` | — | Override attributes for `GL.registerContext`. |
@@ -67,6 +76,40 @@ Loads the WASM binary, resolves a WebGL2 context, performs a float-texture capab
 | `skipCapabilityCheck` | `boolean` | `false` | Skip the RGBA32F readback probe during init. |
 
 If neither `webglContext` nor `canvas` is provided, a hidden `<canvas>` is created automatically.
+
+### Loading model
+
+The package publishes two entries:
+
+- `lightmapper-wasm` (`dist/index.js`) — the default separate-asset entry.
+- `lightmapper-wasm/single` (`dist/single.js`) — the single-file entry with
+  the wasm embedded as a base64 payload.
+
+For the default entry, `createLightmapperModule` resolves the wasm bytes in
+this precedence:
+
+1. `wasmModuleOptions.wasmBinary` — forwarded to the Emscripten factory
+   untouched.
+2. `options.wasmBinary` — `ArrayBuffer` or `Uint8Array`; no fetch is performed.
+3. `options.moduleFactory` or the `lightmapper-wasm/single` entry — resolution
+   is skipped; the caller’s factory or the embedded payload owns the bytes.
+4. `options.locateWasm(filename)` — the returned string or `URL` is fetched.
+5. The default `new URL("./lightmapper.wasm", import.meta.url)` beside the
+   entry module.
+
+The loader fetches the resolved location and prefers
+`WebAssembly.instantiateStreaming` (response served as `application/wasm`),
+falling back to `arrayBuffer()` + `WebAssembly.instantiate`. A non-OK response
+or failed fetch rejects naming the asset location and HTTP status. The
+WebGL2/`EXT_color_buffer_float` capability probe and context registration run
+before any fetch, so an unsupported device never downloads the binary.
+
+The literal `new URL("./lightmapper.wasm", import.meta.url)` is deliberate:
+bundler asset plugins such as Vite’s only rewrite literal expressions, so the
+published entry keeps `lightmapper.wasm` as a normal build asset.
+
+The default entry fetches, so it requires an HTTP-served page; `file://`
+cannot fetch. Import `lightmapper-wasm/single` when the wasm must be embedded.
 
 ---
 
@@ -819,6 +862,11 @@ while (baking) {
 │  └─ Hemisphere rendering + lightmap readback         │
 └──────────────────────────────────────────────────────┘
 ```
+
+The diagram shows the source layout. In the published build, `dist/index.js`
+contains the wrapper and the inlined Emscripten factory and resolves the
+separate `dist/lightmapper.wasm` beside it; `dist/single.js` keeps the factory
+and the embedded base64 payload in one file.
 
 The data flow during baking:
 

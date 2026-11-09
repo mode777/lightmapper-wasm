@@ -42,6 +42,9 @@ jobs:
           cmake --version
           node --version
 
+      - name: Check pinned Emscripten version
+        run: npm run check:emsdk
+
       - name: Install npm dependencies
         run: npm ci
 
@@ -51,6 +54,14 @@ jobs:
       - name: Build WASM module
         run: npm run build:wasm
 
+      - name: Build single-file WASM flavour
+        run: |
+          npm run configure:wasm:single
+          npm run build:wasm:single
+
+      - name: Report WASM artifact
+        run: npm run report:artifact
+
       - name: Assemble dist folder
         run: npm run build:dist
 
@@ -58,6 +69,9 @@ jobs:
         run: |
           test -f dist/index.js
           test -f dist/index.d.ts
+          test -f dist/single.js
+          test -f dist/single.d.ts
+          test -f dist/lightmapper.wasm
           echo "All expected artifacts present."
 
       - name: Type-check

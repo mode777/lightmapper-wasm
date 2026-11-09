@@ -31,16 +31,37 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./single": {
+      "types": "./dist/single.d.ts",
+      "default": "./dist/single.js"
     }
   },
   "files": [
     "dist/",
+    "LIGHTMAPPER.md",
+    "WASM_SETUP.md",
     "LICENSE"
   ],
   "scripts": {
-    "configure:wasm": "emcmake cmake -S . -B build/wasm -DLM_BUILD_WASM=ON",
+    "check:emsdk": "node scripts/check-emsdk.mjs",
+    "preconfigure:wasm": "npm run check:emsdk",
+    "configure:wasm": "emcmake cmake -S . -B build/wasm -DLM_BUILD_WASM=ON -DCMAKE_BUILD_TYPE=Release",
+    "prebuild:wasm": "npm run check:emsdk",
     "build:wasm": "cmake --build build/wasm --config Release",
+    "postbuild:wasm": "npm run report:artifact",
     "rebuild:wasm": "npm run configure:wasm && npm run build:wasm",
+    "preconfigure:wasm:single": "npm run check:emsdk",
+    "configure:wasm:single": "emcmake cmake -S . -B build/wasm-single -DLM_BUILD_WASM=ON -DLM_WASM_SINGLE_FILE=ON -DCMAKE_BUILD_TYPE=Release",
+    "prebuild:wasm:single": "npm run check:emsdk",
+    "build:wasm:single": "cmake --build build/wasm-single --config Release",
+    "rebuild:wasm:single": "npm run configure:wasm:single && npm run build:wasm:single",
+    "preconfigure:wasm:debug": "npm run check:emsdk",
+    "configure:wasm:debug": "emcmake cmake -S . -B build/wasm-debug -DLM_BUILD_WASM=ON -DCMAKE_BUILD_TYPE=Debug",
+    "prebuild:wasm:debug": "npm run check:emsdk",
+    "build:wasm:debug": "cmake --build build/wasm-debug --config Debug",
+    "rebuild:wasm:debug": "npm run configure:wasm:debug && npm run build:wasm:debug",
+    "report:artifact": "node scripts/report-artifact.mjs",
     "build:dist": "node scripts/build-dist.mjs",
     "pack": "npm run build:dist && npm pack --pack-destination dist",
     "serve:demo": "npx --yes serve . -l 8080",
@@ -48,6 +69,11 @@
     "test:bake": "node scripts/run-headless-test.mjs",
     "test:update-golden": "node scripts/run-headless-test.mjs --update-golden",
     "verify:remote": "bash scripts/verify-remote.sh",
+    "test:shader": "node test/first-pass-sampling.mjs",
+    "test:readback": "node test/readback-state.mjs",
+    "test:dist": "node test/dist-layout.mjs",
+    "test:loader": "node test/loader-asset.mjs",
+    "test:consumer": "node test/consumer-vite.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

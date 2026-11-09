@@ -1,5 +1,116 @@
 const DEFAULT_WASM_MODULE_RELATIVE_PATH = "../build/wasm/wasm/lightmapper_wasm.mjs";
 
+// build-dist rewrites this constant to "./lightmapper.wasm" in the published
+// entry, where the inlined factory makes the entry itself the resolution base.
+const WASM_ASSET_PATH = "../build/wasm/wasm/lightmapper_wasm.wasm";
+const WASM_ASSET_FILENAME = WASM_ASSET_PATH.slice(WASM_ASSET_PATH.lastIndexOf("/") + 1);
+
+// build-dist rewrites the marker below to `true` in dist/single.js.
+var _singleFileFactory = false;
+
+function normalizeWasmBinary(binary) {
+  if (binary instanceof ArrayBuffer) {
+    return binary;
+  }
+
+  if (ArrayBuffer.isView(binary)) {
+    return new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength);
+  }
+
+  throw new Error("options.wasmBinary must be an ArrayBuffer or a typed array over one.");
+}
+
+function describeError(error) {
+  return error && error.message ? error.message : String(error);
+}
+
+function resolveWasmAssetLocation(options) {
+  if (typeof options.locateWasm === "function") {
+    const located = options.locateWasm(WASM_ASSET_FILENAME);
+    if (located === undefined || located === null) {
+      throw new Error("options.locateWasm must return a string or URL for the lightmapper wasm asset.");
+    }
+    return located instanceof URL ? located : new URL(String(located), import.meta.url);
+  }
+
+  return new URL(WASM_ASSET_PATH, import.meta.url);
+}
+
+async function fetchWasmResponse(location) {
+  let response;
+  try {
+    response = await fetch(location);
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch lightmapper wasm at ${location}: network error: ${describeError(error)}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch lightmapper wasm at ${location}: HTTP ${response.status}`);
+  }
+
+  return response;
+}
+
+async function createFetchedWasmModuleOptions(options) {
+  const location = resolveWasmAssetLocation(options);
+  const response = await fetchWasmResponse(location);
+
+  const canStream =
+    typeof WebAssembly.instantiateStreaming === "function"
+    && (response.headers.get("content-type") || "").includes("application/wasm");
+  // Clone before either path consumes the body so the ArrayBuffer fallback
+  // still has the full response when streaming is unsupported or rejected.
+  const fallbackResponse = canStream && typeof response.clone === "function"
+    ? response.clone()
+    : response;
+
+  let rejectFailure;
+  const failure = new Promise((_, reject) => {
+    rejectFailure = reject;
+  });
+  // The race below owns this rejection; avoid an unhandled rejection when the
+  // factory settles first.
+  failure.catch(() => {});
+
+  const instantiateWasm = (imports, successCallback) => {
+    (async () => {
+      if (canStream) {
+        try {
+          const { instance, module } = await WebAssembly.instantiateStreaming(response, imports);
+          successCallback(instance, module);
+          return;
+        } catch {
+          // Fall through to the ArrayBuffer path; the clone holds the body.
+        }
+      }
+
+      let bytes;
+      try {
+        bytes = await fallbackResponse.arrayBuffer();
+      } catch (error) {
+        throw new Error(
+          `Failed to read lightmapper wasm bytes at ${location}: ${describeError(error)}`
+        );
+      }
+
+      try {
+        const { instance, module } = await WebAssembly.instantiate(bytes, imports);
+        successCallback(instance, module);
+      } catch (error) {
+        throw new Error(
+          `Failed to instantiate lightmapper wasm at ${location}: ${describeError(error)}`
+        );
+      }
+    })().catch(rejectFailure);
+
+    return {};
+  };
+
+  return { instantiateWasm, failure };
+}
+
 function resolveWebGL2Context(options) {
   if (options.webglContext) {
     return options.webglContext;
@@ -186,7 +297,29 @@ export async function createLightmapperModule(options = {}) {
   const moduleFactory = options.moduleFactory
     || (await import(DEFAULT_WASM_MODULE_RELATIVE_PATH)).default;
 
-  const mod = await moduleFactory(options.wasmModuleOptions || {});
+  // Precedence: explicit wasmModuleOptions.wasmBinary (untouched passthrough)
+  // -> options.wasmBinary -> single-file/custom-factory short-circuit ->
+  // locateWasm/default asset URL.
+  const explicitModuleOptions = options.wasmModuleOptions || {};
+  let moduleOptions = explicitModuleOptions;
+  let wasmLoadFailure = null;
+  if (explicitModuleOptions.wasmBinary == null) {
+    if (options.wasmBinary != null) {
+      moduleOptions = {
+        ...explicitModuleOptions,
+        wasmBinary: normalizeWasmBinary(options.wasmBinary)
+      };
+    } else if (!_singleFileFactory && !options.moduleFactory) {
+      const fetched = await createFetchedWasmModuleOptions(options);
+      moduleOptions = { ...explicitModuleOptions, instantiateWasm: fetched.instantiateWasm };
+      wasmLoadFailure = fetched.failure;
+    }
+  }
+
+  const factoryPromise = moduleFactory(moduleOptions);
+  const mod = wasmLoadFailure
+    ? await Promise.race([factoryPromise, wasmLoadFailure])
+    : await factoryPromise;
   const emscriptenGL = tryGetEmscriptenGL(mod);
 
   const constants = {

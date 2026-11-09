@@ -414,6 +414,24 @@ export interface CreateLightmapperModuleOptions {
   wasmModuleOptions?: Record<string, unknown>;
 
   /**
+   * Pre-fetched wasm bytes. When supplied the loader skips asset fetching and
+   * hands these bytes to the factory as the `wasmBinary` module option.
+   *
+   * Precedence: `wasmModuleOptions.wasmBinary` (forwarded untouched) →
+   * this option → `locateWasm` → the default `lightmapper.wasm` URL resolved
+   * beside the loaded module. Supplying bytes skips the asset fetch entirely.
+   */
+  wasmBinary?: ArrayBuffer | Uint8Array;
+
+  /**
+   * Override the wasm asset location. Called with the default asset filename
+   * (`"lightmapper.wasm"` for the published entry). Return a URL or a
+   * path/URL string; it is resolved against the loaded module when relative.
+   * Ignored when explicit wasm bytes are supplied.
+   */
+  locateWasm?: (filename: string) => string | URL;
+
+  /**
    * An existing `WebGL2RenderingContext` to use. Takes priority over `canvas`.
    * If neither `webglContext` nor `canvas` is provided, a hidden canvas is created automatically.
    */
