@@ -36,7 +36,7 @@ export const sunSkyOutdoor: SceneDefinition = {
     camera: { position: [6.8, 2.4, 7.6], target: [0, 1.5, -0.3], fov: 55 }
   },
   bake: {
-    atlasSize: 512,
+    atlasSize: 1024,
     hemisphereSize: 64,
     bounces: 2,
     ambient: [0, 0, 0],

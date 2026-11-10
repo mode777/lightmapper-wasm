@@ -118,10 +118,13 @@ describe("scene catalog validity", () => {
     expect(hdriStudio.bake.hemisphereWeight).toBeUndefined();
   });
 
-  it("uses the reduced outdoor smoothing presets", () => {
-    expect(sunSkyOutdoor.bake.smoothPasses).toBeLessThanOrEqual(4);
-    expect(hdriOutdoor.bake.smoothPasses).toBeLessThanOrEqual(4);
+  it("uses per-scene outdoor smoothing and 1024² environment atlases", () => {
+    expect(sunSkyOutdoor.bake.smoothPasses).toBe(4);
+    expect(hdriOutdoor.bake.smoothPasses).toBe(12);
     expect(hdriStudio.bake.smoothPasses).toBe(12);
+    expect(sunSkyOutdoor.bake.atlasSize).toBe(1024);
+    expect(hdriOutdoor.bake.atlasSize).toBe(1024);
+    expect(hdriStudio.bake.atlasSize).toBe(1024);
   });
 
   it("fails the sampling budget with the computed coverage", () => {

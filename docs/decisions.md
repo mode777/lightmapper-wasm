@@ -334,8 +334,11 @@ display keeps its current visible disk; enforce a six-texel sampling budget at
 the standard H64 and high H128 presets. Expose the library's existing
 `lmSetHemisphereWeights` API through a built-in cosine-weight shim and an
 optional `hemisphereWeight: "cosine"` harness setting, defaulting to uniform.
-Reduce the outdoor smoothing and widen the HDRI outdoor bake prefilter. The
-non-outdoor scenes keep uniform weighting and their current presets.
+Use four smoothing passes for the procedural outdoor scene while keeping the
+HDRI outdoor scene at twelve to suppress line artifacts from its dense cloud
+prefilter, and widen that prefilter. The environment and outdoor scenes use
+1024² atlases. The non-outdoor scenes keep uniform weighting and their current
+presets.
 
 **Consequences.** The outdoor shadows become one soft area-light shadow per
 occluder rather than multiple hemicube lobes; they are not crisp or parallel

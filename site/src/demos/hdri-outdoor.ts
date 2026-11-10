@@ -31,7 +31,7 @@ export const hdriOutdoor: SceneDefinition = {
     camera: { position: [6.2, 3.1, 7.4], target: [0, 1.15, -0.2], fov: 43 }
   },
   bake: {
-    atlasSize: 512,
+    atlasSize: 1024,
     hemisphereSize: 32,
     bounces: 2,
     ambient: [0, 0, 0],
@@ -47,7 +47,7 @@ export const hdriOutdoor: SceneDefinition = {
     zNear: 0.01,
     zFar: 50,
     dilationPasses: 8,
-    smoothPasses: 4,
+    smoothPasses: 12,
     interpolationPasses: 1,
     interpolationThreshold: 0.5
   },

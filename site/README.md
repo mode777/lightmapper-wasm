@@ -20,9 +20,9 @@ Cornell box is one catalog example, not a featured shortcut.
 | `cornell-box` | Multi-bounce GI, color bleeding, emissive ceiling | 1024² atlas, H64, 3 bounces, black ambient |
 | `emissive-alcove` | Arbitrary emissive geometry and HDR neon bars | 512² atlas, H64, 2 bounces, black ambient |
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
-| `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
-| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter |
-| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, cosine, 0.22 rad bake sun |
+| `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 1024² atlas, H32, 2 bounces, black ambient + HDRI |
+| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 1024² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter, 12 smoothing passes |
+| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 1024² atlas, H64, 2 bounces, cosine, 0.22 rad bake sun |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
 `multi-object`. The `environment` section covers both checked-in HDRI and
@@ -173,8 +173,10 @@ hemisphere, so prefiltering is the standard diffuse-lighting setup. The
 scene's intensity multiplier is applied separately by both paths.
 
 `hdri-studio` keeps the five-tap prefilter and twelve smoothing passes.
-`hdri-outdoor` uses a wider seven-tap prefilter (`prefilterRadius: 3`), four
-smoothing passes and cosine hemisphere weighting. The lightmapper's coarse
+`hdri-outdoor` uses a wider seven-tap prefilter (`prefilterRadius: 3`), twelve
+smoothing passes and cosine hemisphere weighting. The outdoor lightmap is
+1024²; a 1024² lightmap with only four passes exposed fine line artifacts, so
+the HDRI scene keeps the original twelve-pass smoothing. The lightmapper's coarse
 hierarchical interpolation (four passes / 16-texel steps) produced large
 diamond artifacts on the walls and floor, so both presets use one fine
 interpolation pass. The outdoor scene is intentionally a partly cloudy

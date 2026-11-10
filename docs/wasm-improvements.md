@@ -810,7 +810,7 @@ package changes.
 - The environment texture and VAO are released on success, failure and
   cancellation.
 - `hdri-studio` has six lit meshes and `hdri-outdoor` has eight lit meshes;
-  both have no emitters, black ambient and a 512²/H32 two-bounce preset, and
+  both have no emitters, black ambient and a 1024²/H32 two-bounce preset, and
   their preview bakes complete in headless SwiftShader.
 - The raw 1k softbox/sun detail does not produce large diamond artifacts: the
   bake uses a prefiltered irradiance copy, one fine interpolation pass and
@@ -894,7 +894,8 @@ harness/display promotions.
 sampled by the low-resolution hemicube. `sun-sky-outdoor` keeps its `0.06 rad`
 display disk but bakes a larger, softer `0.22 rad` lobe with a flux-preserving
 intensity scale; `hdri-outdoor` uses a seven-tap prefiltered bake copy and
-fewer smoothing passes. Both use the
+retains twelve smoothing passes. The three environment/outdoor scenes use
+1024² atlases. Both use the
 library's cosine hemisphere weight through the new
 `lmSetCosineWeights` wrapper method, and the site enforces a six-texel sampling
 budget at H64/H128. The shadows are intentionally soft area-light shadows, not
@@ -919,9 +920,9 @@ a second lighting model.
 - The outdoor bake sun covers at least six hemicube texels at H64 and H128; the
   procedural display still shows the `0.06 rad` disk.
 - The outdoor scenes use cosine weighting; the non-outdoor scenes keep uniform.
-- The outdoor smoothing is reduced below the previous four/twelve passes, and
-  the bake no longer produces multiple hemicube-shaped lobes in the harness or
-  captured stage.
+- The procedural outdoor scene uses four smoothing passes; the HDRI outdoor
+  scene keeps twelve to suppress line artifacts, and the bake no longer
+  produces multiple hemicube-shaped lobes in the harness or captured stage.
 - `hdri-outdoor` remains a partly cloudy multi-source scene; its clouds are
   documented as soft fill.
 - Root wasm/dist layout, loader behavior and the published npm entry remain
@@ -988,8 +989,8 @@ Haven assets and the attribution/navigation copy. Change 12,
 `add-sun-sky-outdoor-lighting`, is implemented with the procedural-sky
 generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog.
 Change 13, `improve-outdoor-sun-lighting`, is implemented with the cosine
-weight shim, well-sampled bake sun, reduced outdoor smoothing and sampling
-budget. The next planned changes in the showcase sequence are
+weight shim, well-sampled bake sun, per-scene outdoor smoothing, 1024²
+environment atlases and sampling budget. The next planned changes in the showcase sequence are
 `promote-bake-harness` and `add-three-adapter`; `worker-support` remains an
 independent open item.
 

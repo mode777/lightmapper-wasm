@@ -55,9 +55,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "45035fc29c753ef344c59a9bfd8a163ff6758b72a1ebb5a7b899d161ea70d89e",
+      "sourceHash": "1937b7c7e3d9132db31ad95e8be816f10b34d4557946d87f58a9f4b808480dec",
       "previewVersion": 1,
-      "capturedAt": "2026-11-10T06:53:28.020Z"
+      "capturedAt": "2026-11-10T15:18:14.585Z"
     },
     "hdri-outdoor": {
       "file": "hdri-outdoor.webp",
@@ -65,9 +65,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "fb971ff8619df7bed82827a33bb7ae8cb42b513478769fd5a9d7bc579d3ce831",
+      "sourceHash": "6d76e83d30c3a53bd4d194533289e47a907802f3b135fde0d5e98224b022620e",
       "previewVersion": 1,
-      "capturedAt": "2026-11-10T06:55:13.177Z"
+      "capturedAt": "2026-11-10T15:20:04.335Z"
     },
     "sun-sky-outdoor": {
       "file": "sun-sky-outdoor.webp",
@@ -75,9 +75,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "1659c0e0630a4d3181c7b2e88bd21a182ab4b5d069d02c4748f711b2b858c2c4",
+      "sourceHash": "2d295193687f73569e4967b83aaf2cdbfeb56dbdd1b6c40dc6737b46173ea876",
       "previewVersion": 1,
-      "capturedAt": "2026-11-10T08:11:26.067Z"
+      "capturedAt": "2026-11-10T15:20:41.412Z"
     }
   }
 }

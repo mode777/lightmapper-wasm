@@ -137,14 +137,19 @@ structured hemicube variation into multiple soft lobes.
 With a well-sampled bake sun:
 
 - `sun-sky-outdoor`: four smoothing passes.
-- `hdri-outdoor`: four smoothing passes, down from twelve.
+- `hdri-outdoor`: twelve smoothing passes. Four passes exposed fine diagonal
+  lightmap line artifacts in the close-up render; the HDRI's dense cloud
+  prefilter needs the original twelve.
 - Keep dilation for chart-border coverage.
 - Keep one fine interpolation pass unless it produces diamonds.
 - Standard quality remains H64; high is H128. The preview remains H32.
+- The three environment/outdoor scenes use 1024² atlases; the preview caps
+  remain in place for draft captures.
 
-The larger bake sun is the primary fix; smoothing only removes the residual
-banding. The exact pass counts and bake radius are tuned in apply against the
-one-soft-shadow and exposure checks. The sampling budget is measured as:
+The larger bake sun is the primary fix for the synthetic scene; smoothing only
+removes residual banding. The exact pass counts and bake radius are tuned in
+apply against the overhead and close-up visual checks. The sampling budget is
+measured as:
 
 ```text
 sunTexels = sunAngularDiameter / (90 / hemisphereSize)

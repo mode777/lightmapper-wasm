@@ -95,17 +95,19 @@ contract, and invalid data SHALL be rejected before GPU resources are created.
 
 ### Requirement: Outdoor smoothing and quality presets
 
-The outdoor scene presets SHALL use at most four smoothing passes and SHALL
-NOT rely on smoothing alone to hide hemicube sampling. The standard preset
-SHALL remain H64 and the high preset SHALL use H128.
+The `sun-sky-outdoor` preset SHALL use four smoothing passes. The
+`hdri-outdoor` preset SHALL use twelve smoothing passes because its dense
+prefiltered cloud field exposes line artifacts at lower smoothing. Neither
+preset SHALL rely on smoothing alone to hide hemicube sampling. The standard
+preset SHALL remain H64 and the high preset SHALL use H128.
 
 #### Scenario: Procedural smoothing stays bounded
 - **WHEN** `sun-sky-outdoor` is baked
 - **THEN** it uses four smoothing passes and still passes the one-soft-shadow check
 
-#### Scenario: HDRI smoothing is reduced
+#### Scenario: HDRI lines are suppressed
 - **WHEN** `hdri-outdoor` is baked
-- **THEN** it uses four smoothing passes, down from twelve, and still passes the one-soft-shadow check
+- **THEN** it uses twelve smoothing passes and its close-up render has no lightmap line artifacts
 
 #### Scenario: Standard and high presets
 - **WHEN** the quality selector is changed

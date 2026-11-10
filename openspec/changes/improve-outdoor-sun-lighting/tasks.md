@@ -18,16 +18,16 @@
 
 - [x] 3.1 Add a bake-only sun variant to the procedural sky: keep the display disk at `0.06 rad`, use a larger `0.22 rad` bake lobe with a `0.08 rad` soft edge and a flux-preserving intensity scale, and preserve direction, colors, intensity and orientation. Verify the sky test and the sampling-budget check.
 - [x] 3.2 Add a wider HDRI prefilter option for the outdoor bake copy while keeping the full decoded HDRI for display; leave `hdri-studio` on its current prefilter. Verify the environment test confirms the bake/display variants and unchanged studio behavior.
-- [x] 3.3 Use four smoothing passes for `sun-sky-outdoor` and four for `hdri-outdoor` (down from twelve for the HDRI), keep dilation for chart borders, and keep standard H64/high H128/preview H32. Verify the one-soft-shadow and exposure checks at both H64 and H128.
+- [x] 3.3 Use four smoothing passes for `sun-sky-outdoor` and twelve for `hdri-outdoor` (restored after four exposed line artifacts), keep dilation for chart borders, and keep standard H64/high H128/preview H32. Verify the one-soft-shadow and exposure checks at both H64 and H128, and a clean HDRI close-up.
 - [x] 3.4 Add harness/site checks that the outdoor bake produces one soft directional shadow rather than multiple hemicube-shaped lobes, and that H64/H128 preserve the shadow direction and approximate softness. Verify the harness suite fails if the bake sun falls below the sampling budget.
 
 ## 4. Scenes, thumbnails and records
 
-- [x] 4.1 Set `sun-sky-outdoor` to cosine weighting, its `0.22 rad` flux-preserving bake sun and four smoothing passes; keep the display's `0.06 rad` disk. Verify the scene test, the overhead H32/H64 stage captures, and the sampling budget.
-- [x] 4.2 Set `hdri-outdoor` to cosine weighting, the wider bake prefilter and its reduced smoothing; keep the full HDRI background. Verify the scene/harness tests and a stage capture showing one dominant sun with soft cloud fill.
-- [x] 4.3 Confirm `ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas` and `hdri-studio` keep uniform weighting and their existing environment/smoothing presets. Verify their scene tests.
+- [x] 4.1 Set `sun-sky-outdoor` to cosine weighting, its `0.22 rad` flux-preserving bake sun, four smoothing passes and a 1024² atlas; keep the display's `0.06 rad` disk. Verify the scene test, the overhead H32/H64 stage captures, and the sampling budget.
+- [x] 4.2 Set `hdri-outdoor` to cosine weighting, the wider bake prefilter, twelve smoothing passes and a 1024² atlas; keep the full HDRI background. Verify the scene/harness tests and a close-up capture with no line artifacts and soft cloud fill.
+- [x] 4.3 Confirm `ao-studio`, `cornell-box`, `emissive-alcove` and `tabletop-atlas` keep uniform weighting and their existing environment/smoothing presets, and `hdri-studio` keeps uniform weighting, twelve smoothing passes and its new 1024² atlas. Verify their scene tests.
 - [x] 4.4 Wire the scene `hemisphereWeight` and bake-environment options through `site/src/demo-page.ts`, and confirm the stage/statistics/smoke flow does not introduce a new bake stage. Verify `CHROME_SHELL_PATH=… npm run test:smoke --prefix site`.
-- [x] 4.5 Recapture all seven thumbnails and update `site/src/assets/previews/manifest.json`; `site/src/demos/types.ts` is a shared source hash. Verify the thumbnail tests, manifest hashes and a visual check of the two outdoor images.
+- [x] 4.5 Recapture the three environment-scene thumbnails (`hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and update `site/src/assets/previews/manifest.json`; the atlas and source changes invalidate those hashes. Verify the thumbnail tests, manifest hashes and a visual check of the two outdoor images.
 - [x] 4.6 Add AD-020 to `docs/decisions.md` for the well-sampled area sun and cosine weighting, and update `docs/wasm-improvements.md` with the roadmap row and revised showcase status. Verify AD-020 extends AD-017 without superseding it and AD-018/AD-019 remain reserved.
 - [x] 4.7 Refresh the outdoor-lighting prose in `site/README.md`, `README.md` and the project context in `openspec/config.yaml`, including the softer-shadow trade-off and the partly cloudy HDRI policy. Verify the documented commands run as written.
 

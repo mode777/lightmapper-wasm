@@ -32,7 +32,7 @@ export const hdriStudio: SceneDefinition = {
     camera: { position: [5.8, 3.6, 7.2], target: [0, 1.3, 0], fov: 42 }
   },
   bake: {
-    atlasSize: 512,
+    atlasSize: 1024,
     hemisphereSize: 32,
     bounces: 2,
     ambient: [0, 0, 0],

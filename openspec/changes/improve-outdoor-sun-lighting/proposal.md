@@ -26,9 +26,11 @@ hemisphere integration and bounded smoothing.
   `0.06 rad` display disk, but use a larger and softer bake-only sun lobe so it
   covers at least six hemicube texels. No sun is removed from the environment
   and no direct-light path is added.
-- Use four smoothing passes for both outdoor scenes (down from twelve for
-  `hdri-outdoor`); the much larger bake sun is the primary fix. Widen the HDRI
+- Use four smoothing passes for `sun-sky-outdoor` and keep twelve for
+  `hdri-outdoor`; the much larger bake sun is the primary fix. Widen the HDRI
   bake prefilter if needed; the display keeps the full-resolution HDRI.
+- Use 1024² atlases for `hdri-studio`, `hdri-outdoor` and `sun-sky-outdoor`.
+  The preview routes keep their existing draft atlas caps.
 - Add a scene-test sampling-budget check from the sun angular diameter and the
   selected hemisphere size. The standard preset stays H64; high remains H128.
 - Recalibrate the outdoor sun/sky exposure for cosine weighting, recapture the
