@@ -144,6 +144,14 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       if (!isPowerOfTwo(hemisphereSize) || hemisphereSize < 8) {
         throw new BakeError(`hemisphere size ${hemisphereSize} must be a power of two >= 8`, "validation");
       }
+      const hemisphereWeight =
+        bakeOptions.hemisphereWeight ?? scene.hemisphereWeight ?? "uniform";
+      if (hemisphereWeight !== "uniform" && hemisphereWeight !== "cosine") {
+        throw new BakeError(
+          `hemisphere weight ${String(hemisphereWeight)} must be "uniform" or "cosine"`,
+          "validation"
+        );
+      }
       const dilationPasses = Math.max(
         0,
         Math.floor(bakeOptions.dilationPasses ?? DEFAULT_DILATION_PASSES)
@@ -288,6 +296,9 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
             );
 
             try {
+              if (hemisphereWeight === "cosine") {
+                module.lmSetCosineWeights(ctx);
+              }
               module.lmSetTargetLightmap(ctx, lightmapPtr, width, height, 4);
               module.lmSetGeometry(
                 ctx,

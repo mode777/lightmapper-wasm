@@ -271,10 +271,11 @@ shim. Nothing fails when a function signature, an
 export name or a struct layout changes. `libfive-wasm` generates its stdlib
 surface from the C header and drift-checks it in the build.
 
-The wrapper also omits `lmSetHemisphereWeights` (a C function pointer) and the
-TGA helpers (filesystem disabled). A complete API should either expose
-callback-based weights with `addFunction` and TGA as a byte array, or document
-the omission and the supported alternative.
+The wrapper now exposes a built-in `lmSetCosineWeights` shim over
+`lmSetHemisphereWeights` (see AD-020), but arbitrary callback weights and the
+TGA helpers (filesystem disabled) remain omitted. A complete API should either
+expose callback-based weights with `addFunction` and TGA as a byte array, or
+document the omission and the supported alternative.
 
 ### F8 — No release record; docs were stale (P1)
 
@@ -435,14 +436,15 @@ are the intended kebab-case change names.
 | 10 | `add-showcase-site` (AD-015, AD-016) | this repo | 5 | Implemented | Gallery, xatlas-everywhere UVs, bake harness, three.js display, Pages deploy |
 | 11 | `add-hdri-environment-baking` (AD-017) | this repo | 10 | Implemented (two 1k Poly Haven HDRIs) | Environment skybox, studio and outdoor HDRI scenarios |
 | 12 | `add-sun-sky-outdoor-lighting` | this repo | 10, 11 | Implemented (procedural sky + sun disk) | Non-HDRI outdoor scenario with a directional sun and generated sky |
-| 13 | `promote-bake-harness` (AD-018) | this repo | 10, 11, 12 | Planned | `lightmapper-wasm/bake` package entry |
-| 14 | `add-three-adapter` (AD-019) | this repo | 13 | Planned | Optional `lightmapper-wasm/three` package entry |
+| 13 | `improve-outdoor-sun-lighting` (AD-020) | this repo | 10–12 | Implemented (cosine weights + well-sampled bake sun) | Replace multi-lobed outdoor sun sampling with a soft area-light response |
+| 14 | `promote-bake-harness` (AD-018) | this repo | 10, 11, 12, 13 | Planned | `lightmapper-wasm/bake` package entry |
+| 15 | `add-three-adapter` (AD-019) | this repo | 14 | Planned | Optional `lightmapper-wasm/three` package entry |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
 fix. Changes 4 and 5 are implemented here; changes 6–8 remain proposed. Change
-9 spans both and is the final documentation/release gate. Changes 10–12 are the
-implemented showcase sequence; changes 13–14 are the planned harness/display
+9 spans both and is the final documentation/release gate. Changes 10–13 are the
+implemented showcase sequence; changes 14–15 are the planned harness/display
 promotions.
 
 ---
@@ -886,6 +888,53 @@ data and implements AD-015/AD-016 and AD-009; it respects AD-006/AD-013. It
 adds no ADR and does not supersede one. AD-018/AD-019 remain reserved for the
 harness/display promotions.
 
+### 7.13 `improve-outdoor-sun-lighting` — this repo (implemented)
+
+**Status:** Implemented. The outdoor scenes no longer rely on a near-delta sun
+sampled by the low-resolution hemicube. `sun-sky-outdoor` keeps its `0.06 rad`
+display disk but bakes a larger, softer `0.11 rad` lobe; `hdri-outdoor` uses a
+seven-tap prefiltered bake copy and fewer smoothing passes. Both use the
+library's cosine hemisphere weight through the new
+`lmSetCosineWeights` wrapper method, and the site enforces a six-texel sampling
+budget at H64/H128. The shadows are intentionally soft area-light shadows, not
+crisp parallel sun shadows.
+
+**Goal:** remove the multiple hemicube-shaped shadow lobes while staying inside
+lightmapper's hemicube model and preserving the display backgrounds.
+
+**Why:** the small sun disk was undersampled at H64, the default uniform
+weighting over-emphasized grazing sun/horizon light, and the outdoor presets
+used too much smoothing. A direct shadow map was rejected because it introduced
+a second lighting model.
+
+**Scope:** `wasm/lightmapper_wasm.c`, `wasm/CMakeLists.txt`, `src/index.js`,
+`types/index.d.ts`, `LIGHTMAPPER.md`, `site/src/bake/`, `site/src/environment/`,
+`site/src/demos/`, the site tests/thumbnails and this roadmap. No
+`lightmapper.h` or submodule change.
+
+**Acceptance:**
+- The wrapper exposes `lmSetCosineWeights`; a context configured with it uses
+  `cos(theta)` weighting, while the default remains uniform.
+- The outdoor bake sun covers at least six hemicube texels at H64 and H128; the
+  procedural display still shows the `0.06 rad` disk.
+- The outdoor scenes use cosine weighting; the non-outdoor scenes keep uniform.
+- The outdoor smoothing is reduced below the previous four/twelve passes, and
+  the bake no longer produces multiple hemicube-shaped lobes in the harness or
+  captured stage.
+- `hdri-outdoor` remains a partly cloudy multi-source scene; its clouds are
+  documented as soft fill.
+- Root wasm/dist layout, loader behavior and the published npm entry remain
+  unchanged apart from the additive wrapper method and declarations.
+
+**Verification:** wasm and dist rebuild, `npm test`, `npm run test:dist`,
+`npm run test:shader`, `npm run test:readback`, `npm run test:loader`,
+`npm run test:consumer`, `npm run typecheck`, the site check/unit/harness/smoke
+suites, thumbnail capture, production build/check and `npm run verify:remote`.
+
+**ADR footprint:** adds AD-020; extends AD-017 without superseding it and does
+not change `add-sun-sky-outdoor-lighting`'s environment-only decision.
+AD-018/AD-019 remain reserved.
+
 ---
 
 ## 8. Non-goals
@@ -936,9 +985,12 @@ Pages deployment. Change 11, `add-hdri-environment-baking`, is implemented with
 the environment skybox, `hdri-studio`, `hdri-outdoor`, the checked-in Poly
 Haven assets and the attribution/navigation copy. Change 12,
 `add-sun-sky-outdoor-lighting`, is implemented with the procedural-sky
-generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog. The
-next planned changes in the showcase sequence are `promote-bake-harness` and
-`add-three-adapter`; `worker-support` remains an independent open item.
+generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog.
+Change 13, `improve-outdoor-sun-lighting`, is implemented with the cosine
+weight shim, well-sampled bake sun, reduced outdoor smoothing and sampling
+budget. The next planned changes in the showcase sequence are
+`promote-bake-harness` and `add-three-adapter`; `worker-support` remains an
+independent open item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a
 `[lightmapper]` task here) and mirror the status in this roadmap. This repo’s

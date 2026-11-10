@@ -217,6 +217,22 @@ function topBottomEnvironment(
   return { width, height, data, intensity: 1 };
 }
 
+/** Bright band just above the horizon, dark zenith; isolates grazing weight. */
+function horizonEnvironment(width = 8, height = 4): BakeEnvironment {
+  const data = new Float32Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    const value = y === height - 2 ? 4 : 0;
+    for (let x = 0; x < width; x += 1) {
+      const i = (y * width + x) * 4;
+      data[i] = value;
+      data[i + 1] = value;
+      data[i + 2] = value;
+      data[i + 3] = 1;
+    }
+  }
+  return { width, height, data, intensity: 1 };
+}
+
 function proceduralSky(overrides: Partial<ProceduralSky> = {}): ProceduralSky {
   return {
     width: 64,
@@ -352,6 +368,129 @@ async function main(): Promise<void> {
         bottomBright.stats.max < topBright.stats.max * 0.25,
         `bottom-bright environment leaked light: ${bottomBright.stats.max} vs ${topBright.stats.max}`
       );
+    });
+
+    await checkAsync("cosine weighting reduces grazing horizon light", async () => {
+      const scene = environmentOnlyScene(horizonEnvironment(), 8);
+      const options = {
+        hemisphereSize: 32,
+        bounces: 1,
+        dilationPasses: 0,
+        smooth: false,
+        interpolationPasses: 0
+      } as const;
+      const uniform = await harness!.bake(scene, options);
+      const cosine = await harness!.bake(scene, { ...options, hemisphereWeight: "cosine" });
+      assert(uniform.stats.mean > 0.01, "horizon environment produced no light");
+      assert(
+        cosine.stats.mean < uniform.stats.mean,
+        `cosine weighting did not reduce grazing light: ${cosine.stats.mean} vs ${uniform.stats.mean}`
+      );
+    });
+
+    await checkAsync("rejects an invalid hemisphere weight", async () => {
+      let error: unknown = null;
+      try {
+        await harness!.bake(singleScene(), {
+          hemisphereSize: 16,
+          bounces: 1,
+          hemisphereWeight: "bogus" as never
+        });
+      } catch (caught) {
+        error = caught;
+      }
+      assert(error, "invalid hemisphere weight was accepted");
+      assert(
+        errorMessage(error).includes("hemisphere weight"),
+        "error does not name the hemisphere weight"
+      );
+    });
+
+    await checkAsync("applies cosine weighting to every object context", async () => {
+      const module = harness!.module as unknown as {
+        lmSetCosineWeights(ctx: number): void;
+      };
+      const original = module.lmSetCosineWeights.bind(module);
+      let calls = 0;
+      module.lmSetCosineWeights = (ctx) => {
+        calls += 1;
+        original(ctx);
+      };
+      try {
+        const result = await harness!.bake(twoObjectScene(), {
+          hemisphereSize: 16,
+          bounces: 1,
+          dilationPasses: 0,
+          hemisphereWeight: "cosine"
+        });
+        assert(regionMax(result, 0.02, 0.04, 0.28, 0.48) > 0, "left cosine region is black");
+        assert(regionMax(result, 0.52, 0.04, 0.78, 0.48) > 0, "right cosine region is black");
+      } finally {
+        module.lmSetCosineWeights = original;
+      }
+      assert(calls === 2, `expected 2 cosine context calls, saw ${calls}`);
+    });
+
+    await checkAsync("recovers after cancelling a cosine bake", async () => {
+      const controller = new AbortController();
+      let aborted = false;
+      const promise = harness!.bake(environmentOnlyScene(horizonEnvironment(), 8), {
+        hemisphereSize: 32,
+        bounces: 4,
+        dilationPasses: 1,
+        hemisphereWeight: "cosine",
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (!aborted && progress.stage === "bounce") {
+            aborted = true;
+            controller.abort();
+          }
+        }
+      });
+      let abortedError: unknown = null;
+      try {
+        await promise;
+      } catch (error) {
+        abortedError = error;
+      }
+      assert(abortedError, "cosine bake completed instead of aborting");
+      assert(isAbortError(abortedError), `unexpected abort error: ${errorMessage(abortedError)}`);
+      const next = await harness!.bake(singleScene(), { hemisphereSize: 16, bounces: 1 });
+      assert(next.stats.max > 0, "bake after cosine cancellation did not produce light");
+    });
+
+    await checkAsync("keeps procedural sun occlusion consistent at H64 and H128", async () => {
+      const sun = generateProceduralSky(
+        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
+      );
+      for (const hemisphereSize of [64, 128]) {
+        const openScene = environmentOnlyScene(sun, 2);
+        const open = await harness!.bake(openScene, {
+          hemisphereSize,
+          bounces: 1,
+          dilationPasses: 0,
+          smooth: false,
+          interpolationPasses: 0,
+          hemisphereWeight: "cosine"
+        });
+        const occludedScene = environmentOnlyScene(sun, 2);
+        occludedScene.objects.push(
+          emissiveSurface("black ceiling", -10, 10, -10, 10, 1.5, [0, 0, 0])
+        );
+        const occluded = await harness!.bake(occludedScene, {
+          hemisphereSize,
+          bounces: 1,
+          dilationPasses: 0,
+          smooth: false,
+          interpolationPasses: 0,
+          hemisphereWeight: "cosine"
+        });
+        assert(open.stats.max > 0, `open sun produced no light at H${hemisphereSize}`);
+        assert(
+          occluded.stats.max < open.stats.max * 0.05,
+          `ceiling did not occlude the sun at H${hemisphereSize}: ${occluded.stats.max} vs ${open.stats.max}`
+        );
+      }
     });
 
     await checkAsync("rejects an invalid environment with a clear error", async () => {

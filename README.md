@@ -58,6 +58,9 @@ lm.viewF32(lightmapPtr, floatCount).fill(0);
 lm.makeBoundContextCurrent();
 const ctx = lm.lmCreate(64, 0.001, 100.0, 0, 0, 0, 2, 0.01, 0.0);
 
+// Optional: cosine-weight incoming radiance for Lambertian surfaces.
+// lm.lmSetCosineWeights(ctx);
+
 // 4. Bind the lightmap and geometry
 lm.lmSetTargetLightmap(ctx, lightmapPtr, W, H, C);
 lm.lmSetGeometry(ctx, 0,
@@ -220,7 +223,10 @@ The seven scenarios are `ao-studio` (ambient-only AO), `cornell-box`
 (environment-only studio lighting from a checked-in Poly Haven HDRI),
 `hdri-outdoor` (environment-only midday daylight from a checked-in Poly Haven
 sky HDRI) and `sun-sky-outdoor` (non-HDRI outdoor lighting from a generated
-procedural sky and directional sun disk). Every scenario unwraps its lit meshes
+procedural sky and directional sun disk). The outdoor scenes use cosine
+hemisphere weighting and a well-sampled bake-only sun lobe; the resulting
+shadows are soft area-light shadows, not a crisp parallel sun. Every scenario
+unwraps its lit meshes
 through `xatlas-wasm`, bakes with the raw-WebGL harness and displays the result
 with three.js. The gallery credits the underlying
 [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and

@@ -531,6 +531,12 @@ export async function createLightmapperModule(options = {}) {
     return ctx;
   }
 
+  function lmSetCosineWeights(ctx) {
+    assertPointer("ctx", ctx);
+    assertBoundContextCurrent();
+    mod._lmwSetCosineWeights(ctx);
+  }
+
   function lmDestroy(ctx) {
     assertPointer("ctx", ctx);
     assertBoundContextCurrent();
@@ -671,6 +677,7 @@ export async function createLightmapperModule(options = {}) {
     makeBoundContextCurrent,
     makeBeginFrameBuffers,
     lmCreate,
+    lmSetCosineWeights,
     lmDestroy,
     lmSetTargetLightmap,
     lmSetGeometry,

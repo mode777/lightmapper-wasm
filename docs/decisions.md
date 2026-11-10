@@ -317,3 +317,31 @@ avoids the softbox/sun-grid aliasing and coarse interpolation diamonds seen
 with raw 1k HDRIs. Environment orientation, intensity, validation and lifecycle
 are covered by headless WebGL2 tests. The future `lightmapper-wasm/bake`
 promotion (AD-018) must preserve the environment input.
+
+## AD-020 — Well-sampled area sun and cosine weighting in the showcase {#ad-020}
+
+**Context.** The outdoor showcase scenes read as multi-source even though each
+environment contains one sun. At H64 a `0.06 rad` sun is only about five
+hemicube texels across, and the deterministic 3×3 hemicube rotation plus the
+lightmap smoothing turned the resulting sampling variation into ragged,
+doubled shadow edges. The `hdri-outdoor` scene also used a narrow prefilter and
+twelve smoothing passes. A separate shadow-map or direct-light pass would fix
+the symptom by bypassing lightmapper and creating a second lighting model.
+
+**Decision.** Keep the hemicube as the only lighting path. Make the bake sun a
+well-sampled area light by using a larger, softer bake-only lobe while the
+display keeps its current visible disk; enforce a six-texel sampling budget at
+the standard H64 and high H128 presets. Expose the library's existing
+`lmSetHemisphereWeights` API through a built-in cosine-weight shim and an
+optional `hemisphereWeight: "cosine"` harness setting, defaulting to uniform.
+Reduce the outdoor smoothing and widen the HDRI outdoor bake prefilter. The
+non-outdoor scenes keep uniform weighting and their current presets.
+
+**Consequences.** The outdoor shadows become one soft area-light shadow per
+occluder rather than multiple hemicube lobes; they are not crisp or parallel
+sun shadows. The two outdoor scenes use cosine weighting and recalibrated
+exposure; `hdri-outdoor` remains an intentionally multi-source partly cloudy
+environment. The wasm shim and wrapper gain one additive method, but there is
+no `lightmapper.h` change, no submodule bump, and no package entry or artifact
+layout change. This decision extends AD-017; it does not supersede it. AD-018
+and AD-019 remain reserved for the harness/display promotion.

@@ -12,9 +12,12 @@ export const SHARED_FILES = ["geometry.ts", "types.ts", "sections.ts"];
 
 /** Extra rendered inputs, keyed by scenario id, relative to the site root. */
 const ENVIRONMENT_FILES = {
-  "hdri-studio": ["src/assets/environments/studio_small_09_1k.hdr"],
-  "hdri-outdoor": ["src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr"],
-  "sun-sky-outdoor": ["src/environment/sky.ts"]
+  "hdri-studio": ["src/assets/environments/studio_small_09_1k.hdr", "src/environment/hdr.ts"],
+  "hdri-outdoor": [
+    "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr",
+    "src/environment/hdr.ts"
+  ],
+  "sun-sky-outdoor": ["src/environment/sky.ts", "src/environment/hdr.ts"]
 };
 
 export function sourceFilesFor(id) {

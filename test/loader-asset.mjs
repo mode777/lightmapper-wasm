@@ -166,7 +166,7 @@ async function scenarioDefaultEntry() {
   const lm = await entry.createLightmapperModule({ webglContext: gl });
 
   const apiNames = [
-    "lmCreate", "lmDestroy", "lmSetTargetLightmap", "lmSetGeometry",
+    "lmCreate", "lmSetCosineWeights", "lmDestroy", "lmSetTargetLightmap", "lmSetGeometry",
     "lmBegin", "lmEnd", "lmProgress",
     "allocF32", "allocU8", "allocU16", "allocU32", "free",
     "viewF32", "viewU8", "viewU16", "viewU32",
@@ -213,7 +213,7 @@ async function scenarioSuppliedBytes() {
   const ptr = lm.allocF32(4);
   const fetchCount = wasmFetchesSince(fetchStart);
   const checks = {
-    resolved: typeof lm.lmCreate === "function" && typeof lm.lmDestroy === "function",
+    resolved: typeof lm.lmCreate === "function" && typeof lm.lmSetCosineWeights === "function" && typeof lm.lmDestroy === "function",
     heapUsable: Number.isInteger(ptr) && ptr > 0,
     noAssetFetch: fetchCount === 0
   };

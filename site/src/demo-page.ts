@@ -641,14 +641,20 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
 
     let loadedEnvironment: LoadedEnvironment | null = null;
     const environmentDescriptor = scenario.bake.environment;
+    const environmentBake = scenario.bake.environmentBake;
     if (environmentDescriptor) {
       try {
         loadedEnvironment =
           environmentDescriptor.kind === "hdr"
             ? await loadHdrEnvironment(environmentDescriptor.url, {
-                intensity: environmentDescriptor.intensity
+                intensity: environmentDescriptor.intensity,
+                prefilterRadius: environmentBake?.prefilterRadius
               })
-            : createProceduralSkyEnvironment(environmentDescriptor);
+            : createProceduralSkyEnvironment(
+                environmentDescriptor,
+                null,
+                environmentBake?.sun
+              );
       } catch (error) {
         if (!disposed) {
           if (environmentDescriptor.kind === "hdr") {
@@ -754,6 +760,9 @@ function toBakeScene(
     objects
   };
   if (environment) scene.environment = environment;
+  if (scenario.bake.hemisphereWeight) {
+    scene.hemisphereWeight = scenario.bake.hemisphereWeight;
+  }
   return scene;
 }
 

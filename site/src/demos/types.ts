@@ -1,4 +1,5 @@
-import type { ProceduralSky } from "../environment/sky";
+import type { HemisphereWeight } from "../bake/types";
+import type { ProceduralSky, ProceduralSunVariant } from "../environment/sky";
 
 export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";
 
@@ -33,6 +34,13 @@ export interface SceneMeta {
   camera?: SceneCamera;
 }
 
+export interface EnvironmentBakeOptions {
+  /** Bake-only procedural sun override; the display keeps the scene's disk. */
+  sun?: ProceduralSunVariant;
+  /** HDRI Gaussian radius in target texels for the prefiltered bake copy. */
+  prefilterRadius?: number;
+}
+
 export interface BakePreset {
   /** Square atlas size in texels. */
   atlasSize: number;
@@ -43,6 +51,10 @@ export interface BakePreset {
   ambient: Vec3;
   /** Optional equirectangular HDRI used as the bake skybox and display background. */
   environment?: SceneEnvironment;
+  /** Per-scene hemisphere weighting; defaults to uniform. */
+  hemisphereWeight?: HemisphereWeight;
+  /** Bake-only environment variants that do not change the display source. */
+  environmentBake?: EnvironmentBakeOptions;
   zNear?: number;
   zFar?: number;
   dilationPasses?: number;

@@ -34,6 +34,12 @@ export interface ProceduralSky {
 export const DEFAULT_PROCEDURAL_SKY_WIDTH = 512;
 export const DEFAULT_PROCEDURAL_SKY_HEIGHT = 256;
 
+/** Bake-only override for the visible sun disk. Same direction and radiance. */
+export interface ProceduralSunVariant {
+  angularRadius: number;
+  softness?: number;
+}
+
 interface ResolvedProceduralSky {
   width: number;
   height: number;
@@ -149,13 +155,43 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
  * pole (v = 0) and the last row is the north pole (v = 1), matching the bake
  * skybox and the existing HDRI environment contract.
  */
-export function generateProceduralSky(sky: ProceduralSky): BakeEnvironment {
+function resolveSunVariant(
+  resolved: ResolvedProceduralSky,
+  variant: ProceduralSunVariant | undefined
+): { angularRadius: number; softness: number } {
+  if (!variant) {
+    return {
+      angularRadius: resolved.sunAngularRadius,
+      softness: resolved.sunAngularRadius * 0.5
+    };
+  }
+
+  const radius = variant.angularRadius;
+  if (!Number.isFinite(radius) || radius <= 0 || radius >= Math.PI / 2) {
+    throw new EnvironmentError(
+      `bake sun angular radius ${radius} must be in (0, PI / 2)`
+    );
+  }
+  const softness = variant.softness ?? radius * 0.5;
+  if (!Number.isFinite(softness) || softness <= 0 || softness >= radius) {
+    throw new EnvironmentError(
+      `bake sun softness ${softness} must be in (0, ${radius})`
+    );
+  }
+  return { angularRadius: radius, softness };
+}
+
+export function generateProceduralSky(
+  sky: ProceduralSky,
+  sunVariant?: ProceduralSunVariant
+): BakeEnvironment {
   const resolved = resolveProceduralSky(sky);
   const { width, height } = resolved;
   const data = new Float32Array(width * height * 4);
+  const sun = resolveSunVariant(resolved, sunVariant);
 
-  const cosOuter = Math.cos(resolved.sunAngularRadius);
-  const cosInner = Math.cos(resolved.sunAngularRadius * 0.5);
+  const cosOuter = Math.cos(sun.angularRadius);
+  const cosInner = Math.cos(sun.angularRadius - sun.softness);
 
   for (let y = 0; y < height; y += 1) {
     const v = (y + 0.5) / height;
@@ -199,14 +235,21 @@ export function generateProceduralSky(sky: ProceduralSky): BakeEnvironment {
   return environment;
 }
 
-/** Generate the bake environment and the matching linear display texture. */
+/**
+ * Generate the display sky and, when requested, a bake-only copy with a larger
+ * and softer sun lobe. The display texture always uses the unmodified sky.
+ */
 export function createProceduralSkyEnvironment(
   sky: ProceduralSky,
-  context: FloatLinearQuery | null = null
+  context: FloatLinearQuery | null = null,
+  bakeSun?: ProceduralSunVariant
 ): LoadedEnvironment {
-  const environment = generateProceduralSky(sky);
+  const displayEnvironment = generateProceduralSky(sky);
+  const environment = bakeSun
+    ? generateProceduralSky(sky, bakeSun)
+    : displayEnvironment;
   return {
     environment,
-    texture: createEnvironmentTexture(environment, context)
+    texture: createEnvironmentTexture(displayEnvironment, context)
   };
 }

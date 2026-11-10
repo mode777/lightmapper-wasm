@@ -27,6 +27,7 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 4. [Constants](#constants)
 5. [Core Lightmapping API](#core-lightmapping-api)
    - [`lmCreate`](#lmcreate)
+   - [`lmSetCosineWeights`](#lmsetcosineweights)
    - [`lmDestroy`](#lmdestroy)
    - [`lmSetTargetLightmap`](#lmsettargetlightmap)
    - [`lmSetGeometry`](#lmsetgeometry)
@@ -226,6 +227,25 @@ Creates a lightmapper context. The context is **reusable** across multiple light
   - `> 0.0` — reduces flat-horizon artifacts on smooth surfaces, but may introduce others
 
 **Throws** if the WebGL state is invalid or parameters are incorrect.
+
+---
+
+### `lmSetCosineWeights`
+
+```ts
+lmSetCosineWeights(ctx: LmContextHandle): void;
+```
+
+Configures the context with a cosine-weighted hemisphere. The default
+lightmapper weighting is uniform (all directions count equally); for a
+Lambertian surface the incoming radiance should be weighted by `cos(theta)`.
+Call this once after `lmCreate` and before the first `lmBegin` pass.
+
+This uses lightmapper's `lmSetHemisphereWeights` API with a built-in C cosine
+function. It does not allocate JavaScript resources; the weight texture lives
+with the context and is released by `lmDestroy`.
+
+**Throws** if the context is invalid or no WebGL2 context is bound.
 
 ---
 
@@ -794,6 +814,26 @@ Higher `interpolationPasses` with the same threshold gives larger speedups on bi
 | 64 | Medium (recommended) | Moderate |
 | 128 | High | Slow |
 | 256 | Very high | Very slow |
+
+### Hemisphere weighting
+
+The default weighting is uniform. For Lambertian diffuse surfaces, call
+`lm.lmSetCosineWeights(ctx)` after `lmCreate` and before the first hemisphere
+pass. This weights incoming radiance by `cos(theta)` and avoids over-weighting
+grazing sun and horizon-sky directions.
+
+### Small light sources and the sampling budget
+
+The hemicube has one sample per lightmap texel. A small, bright sun can cover
+too few texels and produce noisy or multi-lobed shadows. A useful budget is:
+
+```text
+sunTexels = sunAngularDiameter / (90 / hemisphereSize)
+```
+
+Aim for at least six texels. At H64, that means a sun disk of roughly
+`0.09 rad` radius or larger. Below the budget, enlarge the bake sun or raise
+the hemisphere resolution; do not rely on smoothing to hide the sampling.
 
 ### Emissive surfaces
 

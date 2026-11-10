@@ -215,6 +215,20 @@ export interface LightmapperModule extends LightmapperConstants {
   ): LmContextHandle;
 
   /**
+   * Configure the context with a cosine-weighted hemisphere.
+   *
+   * The default lightmapper weighting is uniform (all incoming directions
+   * count equally). Calling this after {@link lmCreate} and before the first
+   * hemisphere pass makes diffuse integration proportional to `cos(theta)`,
+   * which is the usual weight for a Lambertian surface. The call only uploads
+   * the context's weight texture and does not create additional JS resources.
+   *
+   * @param ctx - Context handle returned by {@link lmCreate}.
+   * @throws If the context is invalid or no WebGL2 context is bound.
+   */
+  lmSetCosineWeights(ctx: LmContextHandle): void;
+
+  /**
    * Destroy a lightmapper context and free its native resources.
    * @param ctx - Context handle returned by {@link lmCreate}.
    */

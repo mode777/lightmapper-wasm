@@ -165,6 +165,21 @@ check("negative: copyToHeap(Int8Array) throws", () => {
   expectThrows(() => lm.copyToHeap(new Int8Array(4)), /Float32Array, Uint8Array, Uint16Array, and Uint32Array/);
 });
 
+check("exposes lmSetCosineWeights", () => {
+  assert.equal(typeof lm.lmSetCosineWeights, "function");
+});
+
+check("negative: lmSetCosineWeights without a bound context throws a context-binding error", () => {
+  expectThrows(
+    () => lm.lmSetCosineWeights(1),
+    (error) => {
+      assert.match(error.message, /context/i);
+      assert.match(error.message, /Strict context binding/i);
+      return true;
+    }
+  );
+});
+
 check("negative: lmCreate without a bound context throws a context-binding error", () => {
   expectThrows(
     () => lm.lmCreate(64, 0.001, 100.0, 0, 0, 0, 2, 0.01, 0.0),

@@ -23,6 +23,8 @@ export const PREFILTERED_ENVIRONMENT_HEIGHT = 64;
 
 export interface LoadEnvironmentOptions {
   intensity?: number;
+  /** Gaussian radius in target texels for the prefiltered bake copy. */
+  prefilterRadius?: number;
   /** WebGL context used to choose a supported float filtering mode. */
   context?: FloatLinearQuery | null;
 }
@@ -57,15 +59,28 @@ export function flipRowsBottomUp(
  * studio HDRI contains a high-frequency softbox diffusion grid that aliases
  * badly when captured into a 32-128 px hemisphere.
  */
+function gaussianWeights(radius: number): number[] {
+  if (radius === 2) return [1, 4, 6, 4, 1];
+  const sigma = radius / 2;
+  return Array.from({ length: radius * 2 + 1 }, (_, index) => {
+    const offset = index - radius;
+    return Math.exp(-(offset * offset) / (2 * sigma * sigma));
+  });
+}
+
 export function prefilterEnvironment(
   data: Float32Array,
   width: number,
   height: number,
   targetWidth = PREFILTERED_ENVIRONMENT_WIDTH,
-  targetHeight = PREFILTERED_ENVIRONMENT_HEIGHT
+  targetHeight = PREFILTERED_ENVIRONMENT_HEIGHT,
+  radius = 2
 ): BakeEnvironment {
   if (!Number.isInteger(targetWidth) || !Number.isInteger(targetHeight) || targetWidth <= 0 || targetHeight <= 0) {
     throw new EnvironmentError(`invalid prefilter dimensions ${targetWidth}x${targetHeight}`);
+  }
+  if (!Number.isInteger(radius) || radius < 1 || radius > 4) {
+    throw new EnvironmentError(`prefilter radius ${radius} must be an integer in [1, 4]`);
   }
   if (width % targetWidth !== 0 || height % targetHeight !== 0) {
     throw new EnvironmentError(
@@ -98,11 +113,12 @@ export function prefilterEnvironment(
     }
   }
 
-  // A separable 5-tap Gaussian removes the remaining softbox grid, sun disc
-  // and cloud detail that would otherwise alias into the diffuse lightmap.
-  const weights = [1, 4, 6, 4, 1];
+  // A separable Gaussian removes the remaining softbox grid, sun disc and
+  // cloud detail that would otherwise alias into the diffuse lightmap. The
+  // radius is configurable so a cloudy outdoor HDRI can use a wider bake copy
+  // while a studio HDRI keeps the existing five-tap filter.
+  const weights = gaussianWeights(radius);
   const weightSum = weights.reduce((total, weight) => total + weight, 0) ** 2;
-  const radius = 2;
   const blurred = new Float32Array(downsampled.length);
   for (let y = 0; y < targetHeight; y += 1) {
     for (let x = 0; x < targetWidth; x += 1) {
@@ -197,7 +213,14 @@ export async function loadHdrEnvironment(
     validateBakeEnvironment(displayEnvironment);
 
     const texture = createEnvironmentTexture(displayEnvironment, options.context);
-    const environment = prefilterEnvironment(fullData, width, height);
+    const environment = prefilterEnvironment(
+      fullData,
+      width,
+      height,
+      PREFILTERED_ENVIRONMENT_WIDTH,
+      PREFILTERED_ENVIRONMENT_HEIGHT,
+      options.prefilterRadius
+    );
     environment.intensity = displayEnvironment.intensity;
     validateBakeEnvironment(environment);
     return { environment, texture };

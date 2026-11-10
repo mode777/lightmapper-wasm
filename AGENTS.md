@@ -19,6 +19,11 @@ workflow unless the user explicitly asks for one.
 
 - Do all work in the repository's primary checkout with `Main` checked out.
   Do not create or use `git worktree` checkouts.
+- **Do not use OpenCode's worktree tools for this repository.** Do not call
+  `worktree_create`, do not start or continue a session in a worktree, and do
+  not create a new worktree through the client. If a session unexpectedly
+  starts in one, move the session to the primary checkout before doing any
+  work, consolidate any changes onto `Main`, and remove the worktree.
 - If work exists on a side branch or in a worktree, consolidate it onto `Main`
   first, then remove the worktree or branch. Never leave important changes
   uncommitted or stranded outside `Main`.

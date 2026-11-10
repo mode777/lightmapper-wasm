@@ -152,6 +152,50 @@ describe("procedural sky generation", () => {
     expect(loaded.texture.flipY).toBe(false);
     loaded.texture.dispose();
   });
+
+  it("can generate a wider bake sun while keeping the display disk", () => {
+    const input = sky({
+      width: 128,
+      height: 64,
+      zenith: [0, 0, 0],
+      horizon: [0, 0, 0],
+      ground: [0, 0, 0],
+      sun: {
+        direction: [1, 0, 0],
+        color: [10, 10, 10],
+        angularRadius: 0.2
+      }
+    });
+    const display = generateProceduralSky(input);
+    const bake = generateProceduralSky(input, { angularRadius: 0.4, softness: 0.1 });
+    const center = brightestPixel(display);
+    const sampleX = center.x + 5;
+    const displaySample = pixel(display, sampleX, center.y);
+    const bakeSample = pixel(bake, sampleX, center.y);
+    expect(displaySample[0]).toBeLessThan(0.01);
+    expect(bakeSample[0]).toBeGreaterThan(1);
+
+    const loaded = createProceduralSkyEnvironment(input, null, {
+      angularRadius: 0.4,
+      softness: 0.1
+    });
+    expect(loaded.environment.data).not.toBe(loaded.texture.image.data);
+    const loadedSample = (loaded.environment.data as Float32Array)[
+      (center.y * 128 + sampleX) * 4
+    ];
+    expect(loadedSample).toBeGreaterThan(1);
+    loaded.texture.dispose();
+  });
+
+  it("rejects an invalid bake sun variant", () => {
+    const input = sky({ width: 32, height: 16 });
+    expect(() =>
+      generateProceduralSky(input, { angularRadius: 0, softness: 0.1 })
+    ).toThrow(/bake sun angular radius/);
+    expect(() =>
+      generateProceduralSky(input, { angularRadius: 0.4, softness: 0.4 })
+    ).toThrow(/bake sun softness/);
+  });
 });
 
 describe("procedural sky validation", () => {

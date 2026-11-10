@@ -31,10 +31,12 @@ context: |
   `hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and a site-local,
   package-shaped raw-WebGL bake harness plus a three.js display layer. The
   harness supports an optional linear equirectangular environment that is
-  drawn as the bake skybox and used as the display background (AD-017); the
-  `hdri-studio` and `hdri-outdoor` scenarios use checked-in CC0 Poly Haven
-  assets, while `sun-sky-outdoor` generates a procedural gradient and sun disk
-  at runtime with no asset request. The harness and display are planned for
+  drawn as the bake skybox and used as the display background (AD-017), plus
+  uniform or cosine hemisphere weighting (AD-020). The outdoor scenes use a
+  larger, softer bake-only sun and a six-texel sampling budget; `hdri-studio`
+  and `hdri-outdoor` use checked-in CC0 Poly Haven assets, while
+  `sun-sky-outdoor` generates a procedural gradient and sun disk at runtime
+  with no asset request. The harness and display are planned for
   promotion as `lightmapper-wasm/bake` (AD-018) and `lightmapper-wasm/three`
   (AD-019); until then they stay under `site/src/bake/` and
   `site/src/display/`. Every lit mesh uses one xatlas atlas with a `[0,1)` UV

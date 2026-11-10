@@ -21,8 +21,8 @@ Cornell box is one catalog example, not a featured shortcut.
 | `emissive-alcove` | Arbitrary emissive geometry and HDR neon bars | 512² atlas, H64, 2 bounces, black ambient |
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
 | `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
-| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
-| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, black ambient + procedural sky |
+| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter |
+| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, cosine, 0.11 rad bake sun |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
 `multi-object`. The `environment` section covers both checked-in HDRI and
@@ -91,6 +91,11 @@ interface SceneDefinition {
     bounces: number;
     ambient: [number, number, number]; // linear
     environment?: SceneEnvironment; // HDRI or procedural sky
+    hemisphereWeight?: "uniform" | "cosine"; // default uniform
+    environmentBake?: {
+      sun?: { angularRadius: number; softness?: number }; // procedural bake lobe
+      prefilterRadius?: number; // HDRI bake blur radius in target texels
+    };
     zNear?: number;
     zFar?: number;
     dilationPasses?: number;
@@ -160,17 +165,21 @@ for them.
 Each Radiance file is decoded once with three.js `HDRLoader` and flipped into
 the bottom-up convention: row 0 is the south pole (`v = 0`) and the last row
 is the north pole (`v = 1`). The display background uses the full 1,024 × 512
-linear RGBA float data. The bake uses a 128 × 64 box-filtered and blurred
-**irradiance copy** of the same source. A raw studio HDRI contains a
+linear RGBA float data. The bake uses a 128 × 64 box-filtered and Gaussian
+**blurred radiance copy** of the same source. A raw studio HDRI contains a
 high-frequency softbox diffusion grid, and an outdoor sun/cloud sky has strong
 high-frequency detail too; both alias badly when captured into a 32–128 px
 hemisphere, so prefiltering is the standard diffuse-lighting setup. The
 scene's intensity multiplier is applied separately by both paths.
 
-Both HDRI presets use one fine interpolation pass and twelve smoothing passes.
-The lightmapper's coarse hierarchical interpolation (four passes / 16-texel
-steps) produced large diamond artifacts on the walls and floor, and the
-remaining stochastic mottling was reduced by the extra smoothing passes.
+`hdri-studio` keeps the five-tap prefilter and twelve smoothing passes.
+`hdri-outdoor` uses a wider seven-tap prefilter (`prefilterRadius: 3`), four
+smoothing passes and cosine hemisphere weighting. The lightmapper's coarse
+hierarchical interpolation (four passes / 16-texel steps) produced large
+diamond artifacts on the walls and floor, so both presets use one fine
+interpolation pass. The outdoor scene is intentionally a partly cloudy
+multi-source environment: the direct sun is dominant, but the clouds remain
+soft area-light fill.
 
 ### Procedural sun-and-sky environment
 
@@ -199,12 +208,39 @@ gradient and the sun disk. Row 0 is the south pole (`v = 0`) and the last row is
 the north pole (`v = 1`), matching the HDRI contract. The sun is a soft-edged
 disk at `sun.direction`; because the lightmapper integrates the caller-drawn
 environment, it acts as the scene's directional light and is occluded by scene
-geometry. The same data feeds the bake and the display background, so the
-visible sun and the baked shadows agree. The generator validates its descriptor
-and reuses `validateBakeEnvironment`; it never fetches an asset. The
-`sun-sky-outdoor` preset uses a 1024 × 512 environment, a `0.06` rad sun disk,
-black ambient and four smoothing passes; its standard quality is H64 and the
-preview uses the draft H32 preset.
+geometry. The generator validates its descriptor and reuses
+`validateBakeEnvironment`; it never fetches an asset.
+
+The display keeps the `0.06` rad visible disk. The bake uses a larger, softer
+lobe (`0.11` rad with a `0.03` rad soft edge) so the H64 hemicube sees at least
+six texels. That is deliberately an area light: the shadow is soft, not a
+crisp parallel sun. The preset uses a 1024 × 512 environment, black ambient,
+cosine hemisphere weighting and two smoothing passes; standard quality is H64,
+high is H128 and preview uses draft H32. There is no separate shadow-map or
+direct-light pass; the environment remains the only lighting input.
+
+The site scene test enforces the sampling budget as
+`sunAngularDiameter / (90 / hemisphereSize) >= 6` at H64 and H128. The H32
+preview is a draft capture and is exempt.
+
+## Hemisphere weighting
+
+The lightmapper default weights every hemisphere direction equally. For a
+diffuse surface the incoming radiance should be cosine-weighted; the package
+now exposes `lmSetCosineWeights(ctx)`, a built-in shim over
+`lmSetHemisphereWeights`. The harness option is:
+
+```ts
+interface BakeOptions {
+  hemisphereWeight?: "uniform" | "cosine"; // default uniform
+}
+```
+
+The non-outdoor scenes keep `uniform` to preserve their tuned look. The two
+outdoor scenes use `cosine` and recalibrate their sun/sky intensity. The
+wrapper method is additive and requires a bound WebGL2 context; the wasm shim
+uses a static C cosine function, so no JS callback or function-pointer lifetime
+is involved.
 
 ## Harness and display boundaries
 
@@ -299,8 +335,11 @@ catalog order; `--no-build` skips the Vite build when `site/dist` is current.
 - A scene module change (`src/demos/<id>.ts`, `geometry.ts`, `types.ts` or
   `sections.ts`) changes that source hash and requires recapturing the
   affected thumbnails. `npm test --prefix site` fails on stale hashes.
-- The `sun-sky-outdoor` hash also includes `src/environment/sky.ts`; changing
-  the procedural generator requires recapturing that thumbnail.
+- The `sun-sky-outdoor` hash also includes `src/environment/sky.ts` and
+  `src/environment/hdr.ts`; changing the procedural generator or the shared
+  environment texture helper requires recapturing that thumbnail.
+- Both HDRI hashes include `src/environment/hdr.ts`, so changing the prefilter
+  requires recapturing the studio and outdoor HDRI thumbnails.
 - A change to the viewport, lighting, materials or preview CSS can change the
   captured image without changing a scene source. Bump `PREVIEW_VERSION` in
   `src/demos/coverage.ts` and recapture all seven thumbnails.

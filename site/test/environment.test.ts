@@ -156,6 +156,27 @@ describe("checked-in HDRIs", () => {
     expect(filtered.data[4]).toBeCloseTo(1.75);
   });
 
+  it("supports a wider prefilter radius for outdoor bake copies", () => {
+    const width = 9;
+    const data = new Float32Array(width * 4);
+    for (let x = 0; x < width; x += 1) {
+      const value = x === 4 ? 8 : 0;
+      data[x * 4] = value;
+      data[x * 4 + 1] = value;
+      data[x * 4 + 2] = value;
+      data[x * 4 + 3] = 1;
+    }
+    const narrow = prefilterEnvironment(data, width, 1, width, 1, 2);
+    const wide = prefilterEnvironment(data, width, 1, width, 1, 3);
+    expect(wide.data[(4 + 2) * 4]).toBeGreaterThan(narrow.data[(4 + 2) * 4]);
+    expect(() => prefilterEnvironment(data, width, 1, width, 1, 0)).toThrow(
+      /prefilter radius 0/
+    );
+    expect(() => prefilterEnvironment(data, width, 1, width, 1, 5)).toThrow(
+      /prefilter radius 5/
+    );
+  });
+
   it("builds a linear equirectangular DataTexture from the shared data", () => {
     const env = environment();
     const texture = createEnvironmentTexture(env);

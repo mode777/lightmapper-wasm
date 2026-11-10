@@ -5,6 +5,11 @@ import { hdriStudio } from "../src/demos/hdri-studio";
 import { sunSkyOutdoor } from "../src/demos/sun-sky-outdoor";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
 import { validateGeometry } from "../src/demos/geometry";
+import {
+  assertSunSamplingBudget,
+  MIN_OUTDOOR_SUN_TEXELS,
+  sunTexels
+} from "../src/demos/sampling";
 
 describe("scene catalog validity", () => {
   for (const scenario of SCENARIOS) {
@@ -74,6 +79,55 @@ describe("scene catalog validity", () => {
     expect(environment.sun.color.every(Number.isFinite)).toBe(true);
     expect(environment.sun.angularRadius).toBeGreaterThan(0);
     expect(environment.sun.angularRadius).toBeLessThan(Math.PI / 2);
+  });
+
+  it("gives the outdoor scenes a larger, well-sampled bake sun", () => {
+    const display = sunSkyOutdoor.bake.environment;
+    if (display?.kind !== "sky") throw new Error("sun-sky-outdoor needs a sky");
+    const bakeSun = sunSkyOutdoor.bake.environmentBake?.sun;
+    expect(bakeSun).toBeDefined();
+    if (!bakeSun) throw new Error("sun-sky-outdoor needs a bake sun variant");
+    expect(bakeSun.angularRadius).toBeGreaterThan(display.sun.angularRadius);
+    expect(bakeSun.softness).toBeGreaterThan(0);
+    expect(bakeSun.softness).toBeLessThan(bakeSun.angularRadius);
+
+    const diameter = bakeSun.angularRadius * 2;
+    expect(sunTexels(diameter, 64)).toBeGreaterThanOrEqual(MIN_OUTDOOR_SUN_TEXELS);
+    assertSunSamplingBudget(diameter, 64, "sun-sky-outdoor");
+    assertSunSamplingBudget(diameter, 128, "sun-sky-outdoor/high");
+  });
+
+  it("gives the HDRI outdoor scene a wider prefiltered bake feature", () => {
+    const radius = hdriOutdoor.bake.environmentBake?.prefilterRadius;
+    expect(radius).toBeGreaterThan(2);
+    const effectiveDiameter = (radius ?? 2) * 2 * (Math.PI / 64);
+    expect(sunTexels(effectiveDiameter, 64)).toBeGreaterThanOrEqual(
+      MIN_OUTDOOR_SUN_TEXELS
+    );
+    assertSunSamplingBudget(effectiveDiameter, 64, "hdri-outdoor");
+  });
+
+  it("keeps non-outdoor scenes on the uniform default", () => {
+    for (const scenario of SCENARIOS) {
+      if (scenario.meta.id === "sun-sky-outdoor" || scenario.meta.id === "hdri-outdoor") {
+        continue;
+      }
+      expect(scenario.bake.hemisphereWeight, scenario.meta.id).toBeUndefined();
+      expect(scenario.bake.environmentBake, scenario.meta.id).toBeUndefined();
+    }
+    expect(hdriStudio.bake.hemisphereWeight).toBeUndefined();
+  });
+
+  it("uses the reduced outdoor smoothing presets", () => {
+    expect(sunSkyOutdoor.bake.smoothPasses).toBeLessThanOrEqual(2);
+    expect(hdriOutdoor.bake.smoothPasses).toBeLessThanOrEqual(4);
+    expect(hdriStudio.bake.smoothPasses).toBe(12);
+  });
+
+  it("fails the sampling budget with the computed coverage", () => {
+    expect(() =>
+      assertSunSamplingBudget(0.04, 64, "tiny-sun")
+    ).toThrow(/tiny-sun: sun covers .* hemicube texels at H64/);
   });
 
   it("rejects non-finite geometry with the scene and mesh name", () => {

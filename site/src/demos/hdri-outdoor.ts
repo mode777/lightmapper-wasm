@@ -35,6 +35,10 @@ export const hdriOutdoor: SceneDefinition = {
     hemisphereSize: 32,
     bounces: 2,
     ambient: [0, 0, 0],
+    hemisphereWeight: "cosine",
+    environmentBake: {
+      prefilterRadius: 3
+    },
     environment: {
       kind: "hdr",
       url: ENVIRONMENT_URL,
@@ -43,7 +47,7 @@ export const hdriOutdoor: SceneDefinition = {
     zNear: 0.01,
     zFar: 50,
     dilationPasses: 8,
-    smoothPasses: 12,
+    smoothPasses: 4,
     interpolationPasses: 1,
     interpolationThreshold: 0.5
   },

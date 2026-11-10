@@ -1,6 +1,9 @@
 /** Local copy keeps the bake harness free of site-specific imports. */
 export type Vec3 = [number, number, number];
 
+/** Lightmapper hemisphere weighting. Uniform is the library default. */
+export type HemisphereWeight = "uniform" | "cosine";
+
 export type BakeStage = "prepare" | "bounce" | "postprocess" | "readback" | "done";
 
 export interface BakeProgress {
@@ -48,6 +51,8 @@ export interface BakeScene {
   objects: BakeObject[];
   /** Optional equirectangular HDRI drawn as the bake skybox. */
   environment?: BakeEnvironment;
+  /** Scene-level hemisphere weighting; bake options override it. */
+  hemisphereWeight?: HemisphereWeight;
 }
 
 export interface BakeStats {
@@ -79,6 +84,8 @@ export interface BakeTestHooks {
 
 export interface BakeOptions {
   hemisphereSize?: number;
+  /** Overrides the scene's hemisphere weighting. */
+  hemisphereWeight?: HemisphereWeight;
   bounces?: number;
   zNear?: number;
   zFar?: number;

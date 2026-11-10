@@ -124,6 +124,8 @@ describe("thumbnail manifest", () => {
     const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
     expect(sourceFilesFor("hdri-studio")).toContain(studio);
     expect(sourceFilesFor("hdri-outdoor")).toContain(outdoor);
+    expect(sourceFilesFor("hdri-studio")).toContain("src/environment/hdr.ts");
+    expect(sourceFilesFor("hdri-outdoor")).toContain("src/environment/hdr.ts");
     expect(sourceFilesFor("cornell-box")).not.toContain(studio);
     expect(sourceFilesFor("cornell-box")).not.toContain(outdoor);
     expect(sourceHash("hdri-studio")).not.toBe(sourceHash("hdri-outdoor"));
@@ -133,6 +135,7 @@ describe("thumbnail manifest", () => {
     const studio = "src/assets/environments/studio_small_09_1k.hdr";
     const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
     expect(sourceFilesFor("sun-sky-outdoor")).toContain("src/environment/sky.ts");
+    expect(sourceFilesFor("sun-sky-outdoor")).toContain("src/environment/hdr.ts");
     expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(studio);
     expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(outdoor);
     expect(sourceHash("sun-sky-outdoor")).not.toBe(sourceHash("hdri-outdoor"));

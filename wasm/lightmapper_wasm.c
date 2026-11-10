@@ -47,6 +47,17 @@ EMSCRIPTEN_KEEPALIVE lm_context *lmwCreate(
         cameraToSurfaceDistanceModifier);
 }
 
+static float lmw_cosine_weight(float cos_theta, void *userdata)
+{
+    (void)userdata;
+    return cos_theta;
+}
+
+EMSCRIPTEN_KEEPALIVE void lmwSetCosineWeights(lm_context *ctx)
+{
+    lmSetHemisphereWeights(ctx, lmw_cosine_weight, NULL);
+}
+
 EMSCRIPTEN_KEEPALIVE void lmwDestroy(lm_context *ctx)
 {
     lmDestroy(ctx);

@@ -34,6 +34,10 @@ export const sunSkyOutdoor: SceneDefinition = {
     hemisphereSize: 64,
     bounces: 2,
     ambient: [0, 0, 0],
+    hemisphereWeight: "cosine",
+    environmentBake: {
+      sun: { angularRadius: 0.11, softness: 0.03 }
+    },
     environment: {
       kind: "sky",
       zenith: [0.02, 0.06, 0.22],
@@ -52,7 +56,7 @@ export const sunSkyOutdoor: SceneDefinition = {
     zNear: 0.01,
     zFar: 50,
     dilationPasses: 8,
-    smoothPasses: 4,
+    smoothPasses: 2,
     interpolationPasses: 1,
     interpolationThreshold: 0.5
   },
