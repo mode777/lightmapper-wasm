@@ -75,11 +75,12 @@ disk:
 | Variant | Angular radius | Diameter | H64 texels |
 |---|---:|---:|---:|
 | display `sun-sky-outdoor` | 0.06 rad | 6.88° | 4.9 |
-| bake target at H64 | 0.09–0.12 rad | 10.3–13.8° | 7.3–9.8 |
-| bake target at H128 | 0.09–0.12 rad | 10.3–13.8° | 14.6–19.6 |
+| bake target at H64 | 0.22 rad | 25.2° | 17.9 |
+| bake target at H128 | 0.22 rad | 25.2° | 35.8 |
 | alternative: H128, 0.06 rad | 0.06 rad | 6.88° | 9.8 |
 
-The bake lobe also gets a wider soft edge (roughly 0.02–0.03 rad). The result
+The bake lobe also gets a wider soft edge (`0.08 rad`) and a flux-preserving
+intensity scale. The result
 is one stable, softer shadow per occluder rather than multiple hemicube lobes.
 The shadow is intentionally softer than the displayed disk; crispness is not a
 goal for this change.
@@ -135,13 +136,14 @@ structured hemicube variation into multiple soft lobes.
 
 With a well-sampled bake sun:
 
-- `sun-sky-outdoor`: 1–2 smoothing passes.
-- `hdri-outdoor`: 2–4 smoothing passes.
+- `sun-sky-outdoor`: four smoothing passes.
+- `hdri-outdoor`: four smoothing passes, down from twelve.
 - Keep dilation for chart-border coverage.
 - Keep one fine interpolation pass unless it produces diamonds.
 - Standard quality remains H64; high is H128. The preview remains H32.
 
-The exact pass counts and bake radius are tuned in apply against the
+The larger bake sun is the primary fix; smoothing only removes the residual
+banding. The exact pass counts and bake radius are tuned in apply against the
 one-soft-shadow and exposure checks. The sampling budget is measured as:
 
 ```text
@@ -212,8 +214,9 @@ covers both the root package and the site, headless on ANGLE SwiftShader:
   outdoor sun/sky intensity and verify the overall exposure against the current
   bake. Keep non-outdoor scenes uniform.
 - **The bake sun becomes visibly larger than the display disk** → keep the
-  display at `0.06 rad`; tune the bake radius in the 0.09–0.12 range and review
-  the stage capture rather than making the display sun artificial.
+  display at `0.06 rad`; the bake radius is `0.22 rad` with total flux preserved
+  by scaling the disk intensity, and the stage capture is reviewed rather than
+  making the display sun artificial.
 - **Partly cloudy HDRI still has multiple soft cloud shadows** → documented
   policy; clear-sky HDRI is out of scope.
 - **H128 high preset is slower** → standard stays H64; high is explicit; the
@@ -253,6 +256,6 @@ No `[lightmapper]` header change or submodule bump is part of this decision.
 
 ## Open Questions
 
-None. The exact bake-sun radius, prefilter width and smoothing counts are
-apply-time tuning within the ranges above; they do not change the specs or the
-task breakdown.
+None. The bake-sun radius, flux scale, prefilter width and smoothing counts
+were tuned in apply against the overhead visual check; the final values are
+recorded above and in the scene.

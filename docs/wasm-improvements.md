@@ -892,8 +892,9 @@ harness/display promotions.
 
 **Status:** Implemented. The outdoor scenes no longer rely on a near-delta sun
 sampled by the low-resolution hemicube. `sun-sky-outdoor` keeps its `0.06 rad`
-display disk but bakes a larger, softer `0.11 rad` lobe; `hdri-outdoor` uses a
-seven-tap prefiltered bake copy and fewer smoothing passes. Both use the
+display disk but bakes a larger, softer `0.22 rad` lobe with a flux-preserving
+intensity scale; `hdri-outdoor` uses a seven-tap prefiltered bake copy and
+fewer smoothing passes. Both use the
 library's cosine hemisphere weight through the new
 `lmSetCosineWeights` wrapper method, and the site enforces a six-texel sampling
 budget at H64/H128. The shadows are intentionally soft area-light shadows, not

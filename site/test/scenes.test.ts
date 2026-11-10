@@ -119,7 +119,7 @@ describe("scene catalog validity", () => {
   });
 
   it("uses the reduced outdoor smoothing presets", () => {
-    expect(sunSkyOutdoor.bake.smoothPasses).toBeLessThanOrEqual(2);
+    expect(sunSkyOutdoor.bake.smoothPasses).toBeLessThanOrEqual(4);
     expect(hdriOutdoor.bake.smoothPasses).toBeLessThanOrEqual(4);
     expect(hdriStudio.bake.smoothPasses).toBe(12);
   });

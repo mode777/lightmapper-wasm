@@ -22,7 +22,7 @@ Cornell box is one catalog example, not a featured shortcut.
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
 | `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 512² atlas, H32, 2 bounces, black ambient + HDRI |
 | `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 512² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter |
-| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, cosine, 0.11 rad bake sun |
+| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 512² atlas, H64, 2 bounces, cosine, 0.22 rad bake sun |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
 `multi-object`. The `environment` section covers both checked-in HDRI and
@@ -211,13 +211,14 @@ environment, it acts as the scene's directional light and is occluded by scene
 geometry. The generator validates its descriptor and reuses
 `validateBakeEnvironment`; it never fetches an asset.
 
-The display keeps the `0.06` rad visible disk. The bake uses a larger, softer
-lobe (`0.11` rad with a `0.03` rad soft edge) so the H64 hemicube sees at least
-six texels. That is deliberately an area light: the shadow is soft, not a
-crisp parallel sun. The preset uses a 1024 × 512 environment, black ambient,
-cosine hemisphere weighting and two smoothing passes; standard quality is H64,
-high is H128 and preview uses draft H32. There is no separate shadow-map or
-direct-light pass; the environment remains the only lighting input.
+The display keeps the `0.06` rad visible disk. The bake uses a much larger,
+softer lobe (`0.22` rad with a `0.08` rad soft edge and a flux-preserving
+intensity scale) so the H64 hemicube sees about eighteen texels. That is
+deliberately an area light: the shadow is soft, not a crisp parallel sun. The
+preset uses a 1024 × 512 environment, black ambient, cosine hemisphere
+weighting and four smoothing passes; standard quality is H64, high is H128 and
+preview uses draft H32. There is no separate shadow-map or direct-light pass;
+the environment remains the only lighting input.
 
 The site scene test enforces the sampling budget as
 `sunAngularDiameter / (90 / hemisphereSize) >= 6` at H64 and H128. The H32

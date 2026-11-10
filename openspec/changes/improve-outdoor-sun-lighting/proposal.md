@@ -14,7 +14,7 @@ The goal is a clean single soft shadow per occluder, not a crisp parallel sun.
 A separate shadow-map pass would fix the symptom by bypassing lightmapper and
 creating a second lighting model. This change instead improves what the
 hemicube is asked to integrate: a well-sampled bake sun, cosine-weighted
-hemisphere integration and less smoothing.
+hemisphere integration and bounded smoothing.
 
 ## What Changes
 
@@ -26,9 +26,9 @@ hemisphere integration and less smoothing.
   `0.06 rad` display disk, but use a larger and softer bake-only sun lobe so it
   covers at least six hemicube texels. No sun is removed from the environment
   and no direct-light path is added.
-- Reduce the outdoor smoothing: `sun-sky-outdoor` to 1–2 passes and
-  `hdri-outdoor` to 2–4, replacing the current 4 and 12. Widen the HDRI bake
-  prefilter if needed; the display keeps the full-resolution HDRI.
+- Use four smoothing passes for both outdoor scenes (down from twelve for
+  `hdri-outdoor`); the much larger bake sun is the primary fix. Widen the HDRI
+  bake prefilter if needed; the display keeps the full-resolution HDRI.
 - Add a scene-test sampling-budget check from the sun angular diameter and the
   selected hemisphere size. The standard preset stays H64; high remains H128.
 - Recalibrate the outdoor sun/sky exposure for cosine weighting, recapture the

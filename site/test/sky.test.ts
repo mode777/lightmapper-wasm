@@ -187,6 +187,21 @@ describe("procedural sky generation", () => {
     loaded.texture.dispose();
   });
 
+  it("scales the bake sun independently of its angular size", () => {
+    const input = sky({ width: 64, height: 32 });
+    const bright = generateProceduralSky(input, {
+      angularRadius: 0.3,
+      softness: 0.1,
+      intensity: 1
+    });
+    const dim = generateProceduralSky(input, {
+      angularRadius: 0.3,
+      softness: 0.1,
+      intensity: 0.25
+    });
+    expect(brightestPixel(dim).value).toBeLessThan(brightestPixel(bright).value);
+  });
+
   it("rejects an invalid bake sun variant", () => {
     const input = sky({ width: 32, height: 16 });
     expect(() =>
@@ -195,6 +210,9 @@ describe("procedural sky generation", () => {
     expect(() =>
       generateProceduralSky(input, { angularRadius: 0.4, softness: 0.4 })
     ).toThrow(/bake sun softness/);
+    expect(() =>
+      generateProceduralSky(input, { angularRadius: 0.4, softness: 0.1, intensity: -1 })
+    ).toThrow(/bake sun intensity/);
   });
 });
 

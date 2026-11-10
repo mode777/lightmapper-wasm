@@ -18,6 +18,12 @@ function lit(name: string, geometry: GeometryData, albedo: Vec3, transform: Tran
 // A low sun toward the back-left of the default camera. The disk is part of
 // the generated equirectangular environment and acts as the directional light.
 const SUN_DIRECTION: Vec3 = [-0.5, 0.28, -0.82];
+const DISPLAY_SUN_RADIUS = 0.06;
+const BAKE_SUN_RADIUS = 0.22;
+const BAKE_SUN_SOFTNESS = 0.08;
+// Keep the bake disk's total flux close to the visible disk while making it
+// large enough for the hemicube to resolve as a smooth area light.
+const BAKE_SUN_INTENSITY = (DISPLAY_SUN_RADIUS / BAKE_SUN_RADIUS) ** 2;
 
 export const sunSkyOutdoor: SceneDefinition = {
   meta: {
@@ -36,7 +42,11 @@ export const sunSkyOutdoor: SceneDefinition = {
     ambient: [0, 0, 0],
     hemisphereWeight: "cosine",
     environmentBake: {
-      sun: { angularRadius: 0.11, softness: 0.03 }
+      sun: {
+        angularRadius: BAKE_SUN_RADIUS,
+        softness: BAKE_SUN_SOFTNESS,
+        intensity: BAKE_SUN_INTENSITY
+      }
     },
     environment: {
       kind: "sky",
@@ -49,14 +59,14 @@ export const sunSkyOutdoor: SceneDefinition = {
       sun: {
         direction: SUN_DIRECTION,
         color: [800, 600, 380],
-        angularRadius: 0.06,
+        angularRadius: DISPLAY_SUN_RADIUS,
         intensity: 1
       }
     },
     zNear: 0.01,
     zFar: 50,
     dilationPasses: 8,
-    smoothPasses: 2,
+    smoothPasses: 4,
     interpolationPasses: 1,
     interpolationThreshold: 0.5
   },

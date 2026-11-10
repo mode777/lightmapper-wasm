@@ -38,6 +38,8 @@ export const DEFAULT_PROCEDURAL_SKY_HEIGHT = 256;
 export interface ProceduralSunVariant {
   angularRadius: number;
   softness?: number;
+  /** Multiplier applied to the sun disk radiance; defaults to 1. */
+  intensity?: number;
 }
 
 interface ResolvedProceduralSky {
@@ -158,11 +160,12 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 function resolveSunVariant(
   resolved: ResolvedProceduralSky,
   variant: ProceduralSunVariant | undefined
-): { angularRadius: number; softness: number } {
+): { angularRadius: number; softness: number; intensity: number } {
   if (!variant) {
     return {
       angularRadius: resolved.sunAngularRadius,
-      softness: resolved.sunAngularRadius * 0.5
+      softness: resolved.sunAngularRadius * 0.5,
+      intensity: 1
     };
   }
 
@@ -178,7 +181,13 @@ function resolveSunVariant(
       `bake sun softness ${softness} must be in (0, ${radius})`
     );
   }
-  return { angularRadius: radius, softness };
+  const intensity = variant.intensity ?? 1;
+  if (!Number.isFinite(intensity) || intensity < 0) {
+    throw new EnvironmentError(
+      `bake sun intensity ${intensity} must be finite and non-negative`
+    );
+  }
+  return { angularRadius: radius, softness, intensity };
 }
 
 export function generateProceduralSky(
@@ -215,7 +224,10 @@ export function generateProceduralSky(
         directionX * resolved.sunDirection[0] +
         directionY * resolved.sunDirection[1] +
         directionZ * resolved.sunDirection[2];
-      const disk = smoothstep(cosOuter, cosInner, cosAngle) * resolved.sunIntensity;
+      const disk =
+        smoothstep(cosOuter, cosInner, cosAngle) *
+        resolved.sunIntensity *
+        sun.intensity;
 
       const offset = (y * width + x) * 4;
       data[offset] = gradient[0] + resolved.sunColor[0] * disk;
