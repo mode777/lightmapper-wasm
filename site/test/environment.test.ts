@@ -3,15 +3,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { environmentIntensity, validateBakeEnvironment } from "../src/bake/environment";
-import type { BakeEnvironment } from "../src/bake/types";
-import { rayDirectionForNdc } from "../src/bake/environment";
 import {
-  createEnvironmentTexture,
+  environmentIntensity,
   flipRowsBottomUp,
-  loadHdrEnvironment,
-  prefilterEnvironment
-} from "../src/environment/hdr";
+  prefilterEnvironment,
+  rayDirectionForNdc,
+  validateBakeEnvironment,
+  type EnvironmentInput
+} from "lightmap-studio";
+import { createEnvironmentTexture, loadHdrEnvironment } from "../src/environment/hdr";
 
 const HDRI_PATH = fileURLToPath(
   new URL("../src/assets/environments/studio_small_09_1k.hdr", import.meta.url)
@@ -20,7 +20,7 @@ const OUTDOOR_HDRI_PATH = fileURLToPath(
   new URL("../src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr", import.meta.url)
 );
 
-function environment(overrides: Partial<BakeEnvironment> = {}): BakeEnvironment {
+function environment(overrides: Partial<EnvironmentInput> = {}): EnvironmentInput {
   return {
     width: 2,
     height: 1,

@@ -1,4 +1,5 @@
-import { BakeError, type BakeEnvironment, type Vec3 } from "./types";
+import type { Vec3 } from "../types.js";
+import { BakeError, type BakeEnvironment } from "./types.js";
 
 /**
  * Validate an optional equirectangular environment before any GPU resource is

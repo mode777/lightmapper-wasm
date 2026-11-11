@@ -1,4 +1,4 @@
-import type { BakeStats } from "./types";
+import type { BakeStats } from "../types.js";
 
 const NON_BLACK_THRESHOLD = 1e-4;
 

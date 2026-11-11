@@ -226,9 +226,9 @@ sky HDRI) and `sun-sky-outdoor` (non-HDRI outdoor lighting from a generated
 procedural sky and directional sun disk). The outdoor scenes use cosine
 hemisphere weighting and a well-sampled bake-only sun lobe; the resulting
 shadows are soft area-light shadows, not a crisp parallel sun. Every scenario
-unwraps its lit meshes
-through `xatlas-wasm`, bakes with the raw-WebGL harness and displays the result
-with three.js. The gallery credits the underlying
+consumes the private `lightmap-studio` package: it unwraps its lit meshes
+through xatlas, bakes with the studio harness and displays the result with
+three.js. The gallery credits the underlying
 [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and
 global navigation does not feature an individual scenario; the Cornell box is
 one catalog example.
@@ -244,18 +244,17 @@ SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
 SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site
 ```
 
-The build workflow uploads the tested `dist` artifact, the `site` job installs
-and tests the showcase from that artifact, and the `deploy` job publishes only
-on `Main` pushes or manual dispatch. The repository's Pages source must be set
+The build workflow uploads the tested `dist` artifact, builds the private
+studio package, and the `site` job installs and tests the showcase from those
+artifacts. The `deploy` job publishes only on `Main` pushes or manual dispatch. The repository's Pages source must be set
 to **GitHub Actions**; the workflow uses `actions/configure-pages`,
-`actions/upload-pages-artifact` and `actions/deploy-pages`. Wasm is never
-rebuilt in the site job and `lightmapper-wasm` is never installed from the npm
-registry there.
+`actions/upload-pages-artifact` and `actions/deploy-pages`. Wasm is never rebuilt in the site job; the studio is built from the checkout
+and `lightmapper-wasm` is never installed from the npm registry there.
 
 `?preview=1` hides the page chrome and fixes the stage to 16:10 for thumbnail
 capture; `?fail=webgl2|float|lightmapper|xatlas|hdri` exercises the capability
 and asset failure states. See [`site/README.md`](site/README.md) for the scene
-contract, atlas rules, HDRI provenance, harness/display boundaries and
+contract, atlas rules, HDRI provenance, studio/display boundaries and
 recapture procedure.
 
 ## Testing

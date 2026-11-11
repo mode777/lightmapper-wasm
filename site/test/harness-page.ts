@@ -1,19 +1,21 @@
 import * as THREE from "three";
-import { createBakeHarness, type BakeHarness } from "../src/bake/harness";
-import { createProgram } from "../src/bake/gl";
 import {
+  createBakeHarness,
+  createProgram,
   isAbortError,
   type BakeEmissiveObject,
   type BakeEnvironment,
+  type BakeHarness,
   type BakeLitObject,
-  type BakeResult,
-  type BakeScene
-} from "../src/bake/types";
+  type BakeScene,
+  type BakeSnapshot,
+  type UnwrappedObject,
+  type UnwrappedScene
+} from "lightmap-studio";
 import { ThreeDisplay } from "../src/display/three";
 import { createLightmapTexture, lightmapFilterFor } from "../src/display/materials";
 import { createEnvironmentTexture } from "../src/environment/hdr";
 import { generateProceduralSky, type ProceduralSky } from "../src/environment/sky";
-import type { UnwrappedObject, UnwrappedScene } from "../src/atlas/types";
 
 interface CheckResult {
   name: string;
@@ -107,7 +109,7 @@ function emissiveSurface(
   };
 }
 
-function regionMax(result: BakeResult, u0: number, v0: number, u1: number, v1: number): number {
+function regionMax(result: BakeSnapshot, u0: number, v0: number, u1: number, v1: number): number {
   const x0 = Math.floor(u0 * result.width);
   const x1 = Math.ceil(u1 * result.width);
   const y0 = Math.floor(v0 * result.height);

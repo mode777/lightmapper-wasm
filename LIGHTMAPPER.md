@@ -28,6 +28,7 @@ This package compiles `lightmapper.h` to WebAssembly via Emscripten and exposes 
 5. [Core Lightmapping API](#core-lightmapping-api)
    - [`lmCreate`](#lmcreate)
    - [`lmSetCosineWeights`](#lmsetcosineweights)
+   - [`lmSeed`](#lmseed)
    - [`lmDestroy`](#lmdestroy)
    - [`lmSetTargetLightmap`](#lmsettargetlightmap)
    - [`lmSetGeometry`](#lmsetgeometry)
@@ -246,6 +247,23 @@ function. It does not allocate JavaScript resources; the weight texture lives
 with the context and is released by `lmDestroy`.
 
 **Throws** if the context is invalid or no WebGL2 context is bound.
+
+---
+
+### `lmSeed`
+
+```ts
+lmSeed(seed: number): void;
+```
+
+Resets the lightmapper's randomized hemisphere rotation jitter. The
+lightmapper adds a small random rotation to each hemisphere sample to break up
+structured sampling patterns. That jitter consumes the C `rand()` sequence, so
+repeated bakes in one module instance can differ. Call `lmSeed` with the same
+non-negative integer before each bake to make the sequence reproducible. The
+call does not require a WebGL context.
+
+**Throws** if the seed is not a non-negative integer.
 
 ---
 

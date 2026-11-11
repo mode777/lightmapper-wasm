@@ -99,6 +99,16 @@ npm run build:wasm:single -- -j3
 npm run build:dist
 npm test
 npm run test:dist
+npm run test:pack
+
+if ! npm ci --prefix studio; then
+  echo "studio npm ci failed (likely out-of-sync lockfile); falling back to npm install" >&2
+  npm install --prefix studio
+fi
+npm run build --prefix studio
+npm run typecheck --prefix studio
+npm test --prefix studio
+npm run test:consumer --prefix studio
 
 export CHROME_SHELL_PATH="\${CHROME_SHELL_PATH:-${REMOTE_CHROME}}"
 if [ "\${UPDATE_GOLDEN:-0}" = "1" ]; then
@@ -106,6 +116,7 @@ if [ "\${UPDATE_GOLDEN:-0}" = "1" ]; then
 else
   npm run test:bake
 fi
+npm run test:headless --prefix studio
 
 echo "==> Showcase: install and verify site/"
 if ! npm ci --prefix site; then

@@ -96,15 +96,30 @@ build. To evaluate a release without LTO, configure with
 The configure and build scripts run `npm run check:emsdk` first and reject an
 `emcc` other than 3.1.64. CI installs the same pinned version.
 
+### Studio package
+
+The private `lightmap-studio` package under `studio/` consumes the built root
+`dist/` and the registry `xatlas-wasm` package. Build it after the root
+artifact:
+
+```sh
+npm run build:studio
+# equivalent to: npm run build:dist && npm run build --prefix studio
+```
+
+`studio/dist/index.js` and `studio/dist/index.d.ts` are the package entry. The
+showcase links the package with `lightmap-studio: file:../studio`; it is not
+published by `lightmapper-wasm` and is excluded from the root tarball.
+
 ## What the build emits
 
 ### Default: separate-asset flavour
 
 ```
-build/wasm/wasm/lightmapper_wasm.mjs    # Emscripten ES module glue, 32,031 bytes, no wasm payload
-build/wasm/wasm/lightmapper_wasm.wasm   # separate wasm binary, 44,136 bytes
+build/wasm/wasm/lightmapper_wasm.mjs    # Emscripten ES module glue, 32,247 bytes, no wasm payload
+build/wasm/wasm/lightmapper_wasm.wasm   # separate wasm binary, 44,686 bytes
 dist/index.js                           # wrapper + inlined glue, resolves ./lightmapper.wasm
-dist/lightmapper.wasm                   # published copy of the binary (44,136 bytes)
+dist/lightmapper.wasm                   # published copy of the binary (44,686 bytes)
 dist/index.d.ts                         # TypeScript declarations
 ```
 
@@ -118,8 +133,8 @@ understand. The loader fetches the asset and uses
 ### Optional: single-file flavour
 
 ```
-build/wasm-single/wasm/lightmapper_wasm.mjs  # 90,437 bytes, wasm embedded as base64
-dist/single.js                               # 112,073 bytes, embedded payload
+build/wasm-single/wasm/lightmapper_wasm.mjs  # 91,281 bytes, wasm embedded as base64
+dist/single.js                               # embedded payload
 dist/single.d.ts                             # declarations for lightmapper-wasm/single
 ```
 
@@ -137,15 +152,15 @@ reports that flavour's embedded wasm. It never modifies the artifacts:
 
 ```text
 report-artifact: build/wasm/wasm/lightmapper_wasm.wasm (separate-asset flavour)
-  wasm bytes:   44136
-  wasm sha256:  8d26a4c4eb52ab00e2240e80ca9f61940c0048be3a38a60ef97dbcb5bdfc284e
-  glue .mjs:    32031 bytes (build/wasm/wasm/lightmapper_wasm.mjs)
+  wasm bytes:   44686
+  wasm sha256:  461ac514d00e2216c24bdd53a80f1756564f5f5131fc940b970f5a66e750bffe
+  glue .mjs:    32247 bytes (build/wasm/wasm/lightmapper_wasm.mjs)
 report-artifact: build/wasm-single/wasm/lightmapper_wasm.mjs (single-file flavour)
-  glue .mjs:    90437 bytes
-  embedded wasm bytes:  44136
-  embedded wasm sha256: 8d26a4c4eb52ab00e2240e80ca9f61940c0048be3a38a60ef97dbcb5bdfc284e
+  glue .mjs:    91281 bytes
+  embedded wasm bytes:  44665
+  embedded wasm sha256:  3b2c738a2b2947c4790e655ed9c0b4631dfc2cb1e32de8530f91e9445eec85cf
 report-artifact: dist
-  dist/index.js: 53648 bytes
+  dist/index.js: 53956 bytes
 ```
 
 The report runs automatically as `postbuild:wasm` after every default release

@@ -1,4 +1,4 @@
-import type { HemisphereWeight } from "../bake/types";
+import type { HemisphereWeight } from "lightmap-studio";
 import type { ProceduralSky, ProceduralSunVariant } from "../environment/sky";
 
 export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";

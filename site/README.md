@@ -119,7 +119,7 @@ produced the bake.
 
 ## xatlas pipeline and the `[0,1)` clamp
 
-`src/atlas/unwrap.ts` adds every lit mesh to one `xatlas-wasm` atlas. For each
+The `lightmap-studio` unwrap pipeline (formerly `site/src/atlas/unwrap.ts`) adds every lit mesh to one `xatlas-wasm` atlas. For each
 output vertex it copies positions and normals through `xref`, stores the chart
 index and normalizes the texel-space UV:
 
@@ -162,8 +162,8 @@ The script resolves each download URL through the Poly Haven API. The site
 never fetches an HDRI from Poly Haven at runtime and CI never needs the network
 for them.
 
-Each Radiance file is decoded once with three.js `HDRLoader` and flipped into
-the bottom-up convention: row 0 is the south pole (`v = 0`) and the last row
+Each Radiance file is decoded once by the studio's pure Radiance decoder
+(`decodeHdr`) and flipped into the bottom-up convention: row 0 is the south pole (`v = 0`) and the last row
 is the north pole (`v = 1`). The display background uses the full 1,024 × 512
 linear RGBA float data. The bake uses a 128 × 64 box-filtered and Gaussian
 **blurred radiance copy** of the same source. A raw studio HDRI contains a
@@ -210,8 +210,8 @@ gradient and the sun disk. Row 0 is the south pole (`v = 0`) and the last row is
 the north pole (`v = 1`), matching the HDRI contract. The sun is a soft-edged
 disk at `sun.direction`; because the lightmapper integrates the caller-drawn
 environment, it acts as the scene's directional light and is occluded by scene
-geometry. The generator validates its descriptor and reuses
-`validateBakeEnvironment`; it never fetches an asset.
+geometry. The generator validates its descriptor and reuses the studio
+`validateEnvironment` check; it never fetches an asset.
 
 The display keeps the `0.06` rad visible disk. The bake uses a much larger,
 softer lobe (`0.22` rad with a `0.08` rad soft edge and a flux-preserving
@@ -231,12 +231,11 @@ preview is a draft capture and is exempt.
 The lightmapper default weights every hemisphere direction equally. For a
 diffuse surface the incoming radiance should be cosine-weighted; the package
 now exposes `lmSetCosineWeights(ctx)`, a built-in shim over
-`lmSetHemisphereWeights`. The harness option is:
+`lmSetHemisphereWeights`. The studio option is:
 
 ```ts
-interface BakeOptions {
-  hemisphereWeight?: "uniform" | "cosine"; // default uniform
-}
+studio.bake({ ..., options: { hemisphereWeight: "uniform" | "cosine" } });
+// default: uniform
 ```
 
 The non-outdoor scenes keep `uniform` to preserve their tuned look. The two
@@ -247,17 +246,18 @@ is involved.
 
 ## Harness and display boundaries
 
-`src/bake/` is a display-agnostic raw-WebGL harness. It owns a hidden WebGL2
-context (or accepts a caller-provided one), compiles the bake shader, uploads
-per-object geometry, runs the shared-atlas bounce loop, draws the full scene
-for every object, uploads the CPU atlas to the GPU once per bounce, and
-returns a `Float32Array` lightmap plus statistics. It imports only
-`lightmapper-wasm` and local bake modules; it never imports three.js or xatlas.
+The display-agnostic bake harness now lives in the private `lightmap-studio`
+package under `studio/src/bake/`. It owns a hidden WebGL2 context (or accepts a
+caller-provided one), compiles the bake shader, uploads per-object geometry,
+runs the shared-atlas bounce loop, draws the full scene for every object,
+uploads the CPU atlas to the GPU once per bounce, and returns a `Float32Array`
+lightmap plus statistics. It imports only `lightmapper-wasm` and its own
+modules; it never imports three.js or xatlas.
 
-A scene may also carry an optional `environment`:
+A scene may also carry an optional environment:
 
 ```ts
-interface BakeEnvironment {
+interface EnvironmentInput {
   width: number;
   height: number;
   data: Float32Array; // linear RGBA, bottom-up, width * height * 4
@@ -265,8 +265,8 @@ interface BakeEnvironment {
 }
 ```
 
-The harness validates the dimensions, data length, finite non-negative
-radiance and intensity before creating GPU resources. When an environment is
+The studio validates the dimensions, data length, finite non-negative radiance
+and intensity before creating GPU resources. When an environment is
 present it uploads one `RGBA32F` texture per bake, draws a fullscreen
 equirectangular skybox with alpha 1.0 before the scene for every lightmapper
 hemisphere side, disables depth test and depth writes for that draw, then
@@ -275,20 +275,22 @@ south pole (`v = 0`); the last row is the north pole. A scene without an
 environment keeps the existing ambient/emissive behavior and the `lmCreate`
 clear color.
 
-`BakeOptions` also exposes `interpolationPasses`, `interpolationThreshold` and
+`BakeOverrides` also exposes `interpolationPasses`, `interpolationThreshold` and
 `smoothPasses` for difficult HDR content. Keep the coarse interpolation grid in
 mind when tuning: the default 2 passes use 4-texel steps, while 4 passes start
 at 16-texel steps and can leave visible diamonds on large diffuse charts.
 
-`src/display/` consumes a completed `BakeResult` and never bakes. It creates a
+`src/display/` consumes a completed studio result and never bakes. It creates a
 linear `THREE.DataTexture`, lit/emissive materials, lit/unlit/wireframe modes,
 orbit controls, resizing and ACES tone mapping. It also accepts an optional
 equirectangular HDRI background texture, applies its intensity and disposes it
 with the display. Its import-boundary test rejects any runtime import from
-`src/bake/` and any `lmCreate`/`lmBegin`/`lmEnd` call.
+`lightmap-studio` and any `lmCreate`/`lmBegin`/`lmEnd` call.
 
-Both layers are package-shaped but site-local for now. `lightmapper-wasm/bake`
-and `lightmapper-wasm/three` are follow-up changes (AD-018/AD-019).
+The unwrap and bake implementation lives in the private `lightmap-studio`
+package; the display and the demo scenes stay site-local consumers. The former
+`lightmapper-wasm/bake` and `lightmapper-wasm/three` promotion plan is withdrawn
+(AD-021).
 
 ## Views and capture mode
 

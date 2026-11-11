@@ -1,30 +1,16 @@
-import createXAtlas, {
-  type CreateXAtlasOptions,
-  type Mesh,
-  type XAtlasModule
-} from "xatlas-wasm";
-import { assertFiniteArray, type SceneDefinition, type SceneMesh } from "../demos/types";
-import type { AtlasMetadata, UnwrappedObject, UnwrappedScene } from "./types";
+import type { Mesh, XAtlasModule } from "xatlas-wasm";
+import { AddMeshError } from "xatlas-wasm";
+
+import type {
+  AtlasMetadata,
+  MeshInput,
+  UnwrappedObject,
+  UnwrappedScene,
+  Vec3
+} from "../types.js";
 
 export const UV_MAX = 1 - 1e-6;
 const UV_AREA_EPSILON = 1e-14;
-
-let modulePromise: Promise<XAtlasModule> | null = null;
-
-export function loadXAtlas(options?: CreateXAtlasOptions): Promise<XAtlasModule> {
-  if (!modulePromise) {
-    modulePromise = createXAtlas(options).catch((error: unknown) => {
-      modulePromise = null;
-      throw error;
-    });
-  }
-  return modulePromise;
-}
-
-/** Test hook: allow a later call to re-attempt module initialization. */
-export function resetXAtlasForTests(): void {
-  modulePromise = null;
-}
 
 /**
  * Normalize an xatlas texel coordinate. The lightmapper's positive-mod maps
@@ -44,44 +30,36 @@ export function normalizeAtlasUv(texel: number, size: number): number {
   return Math.min(Math.max(texel / size, 0), UV_MAX);
 }
 
-export interface UnwrapOptions {
-  /** Override the scene preset atlas size. */
-  atlasSize?: number;
-  /** Reuse an initialized xatlas module. */
-  module?: XAtlasModule;
-  /** Forwarded to createXAtlas on first use. */
-  moduleOptions?: CreateXAtlasOptions;
+export interface UnwrapMeshesOptions {
+  module: XAtlasModule;
+  size: number;
+  label?: string;
 }
 
-export async function unwrapScene(
-  scene: SceneDefinition,
-  options: UnwrapOptions = {}
-): Promise<UnwrappedScene> {
-  const meshes = scene.build();
-  const litMeshes = meshes.filter((mesh) => mesh.kind === "lit");
-  const emissiveObjects = meshes.filter((mesh) => mesh.kind === "emissive");
-  if (litMeshes.length === 0) throw new Error(`${scene.meta.id}: no lit meshes to unwrap`);
-
-  const atlasSize = options.atlasSize ?? scene.bake.atlasSize;
-  if (!Number.isInteger(atlasSize) || atlasSize <= 0) {
-    throw new Error(`${scene.meta.id}: invalid atlas size ${atlasSize}`);
+/** Unwrap lit meshes into one shared atlas. Emissive meshes are not handled. */
+export function unwrapMeshes(
+  meshes: MeshInput[],
+  options: UnwrapMeshesOptions
+): UnwrappedScene {
+  const label = options.label ?? "scene";
+  if (meshes.length === 0) throw new Error(`${label}: no lit meshes to unwrap`);
+  if (!Number.isInteger(options.size) || options.size <= 0) {
+    throw new Error(`${label}: invalid atlas size ${options.size}`);
   }
 
-  const xatlas = options.module ?? (await loadXAtlas(options.moduleOptions));
-  const atlas = xatlas.createAtlas();
-
+  const atlas = options.module.createAtlas();
   try {
-    for (const mesh of litMeshes) {
-      validateLitInput(scene.meta.id, mesh);
+    for (const mesh of meshes) {
+      validateLitInput(label, mesh);
       const error = atlas.addMesh({
         positions: mesh.positions,
         normals: mesh.normals,
         indices: mesh.indices,
-        meshCountHint: litMeshes.length
+        meshCountHint: meshes.length
       });
-      if (error !== xatlas.AddMeshError.Success) {
+      if (error !== AddMeshError.Success) {
         throw new Error(
-          `${scene.meta.id}/${mesh.name}: xatlas addMesh failed: ${xatlas.addMeshErrorString(error)}`
+          `${label}/${mesh.name ?? "mesh"}: xatlas addMesh failed: ${options.module.addMeshErrorString(error)}`
         );
       }
     }
@@ -89,27 +67,27 @@ export async function unwrapScene(
     atlas.generate(
       { maxIterations: 1 },
       {
-        resolution: atlasSize,
+        resolution: options.size,
         padding: 2,
         bilinear: true,
         blockAlign: true
       }
     );
 
-    if (atlas.meshCount !== litMeshes.length) {
+    if (atlas.meshCount !== meshes.length) {
       throw new Error(
-        `${scene.meta.id}: xatlas produced ${atlas.meshCount} meshes for ${litMeshes.length} inputs`
+        `${label}: xatlas produced ${atlas.meshCount} meshes for ${meshes.length} inputs`
       );
     }
     if (atlas.atlasCount !== 1) {
-      throw new Error(`${scene.meta.id}: xatlas produced ${atlas.atlasCount} atlases; one is required`);
+      throw new Error(`${label}: xatlas produced ${atlas.atlasCount} atlases; one is required`);
     }
     if (atlas.width <= 0 || atlas.height <= 0) {
-      throw new Error(`${scene.meta.id}: xatlas produced an empty atlas`);
+      throw new Error(`${label}: xatlas produced an empty atlas`);
     }
 
-    const litObjects = litMeshes.map((mesh, index) =>
-      unwrapObject(scene.meta.id, mesh, atlas.getMesh(index), atlas.width, atlas.height)
+    const litObjects = meshes.map((mesh, index) =>
+      unwrapObject(label, mesh, atlas.getMesh(index), atlas.width, atlas.height)
     );
 
     const metadata: AtlasMetadata = {
@@ -119,30 +97,51 @@ export async function unwrapScene(
       utilization: atlas.getUtilization(0)
     };
 
-    return { litObjects, emissiveObjects, atlas: metadata };
+    return { litObjects, emissiveObjects: [], atlas: metadata };
   } finally {
     atlas.destroy();
   }
 }
 
-function validateLitInput(sceneId: string, mesh: SceneMesh): void {
-  const label = `${sceneId}/${mesh.name}`;
-  if (!mesh.normals) throw new Error(`${label}: lit mesh needs normals for xatlas`);
+function validateLitInput(label: string, mesh: MeshInput): void {
+  const name = mesh.name || "mesh";
+  if (!mesh.normals) throw new Error(`${label}/${name}: lit mesh needs normals for xatlas`);
   if (mesh.positions.length === 0 || mesh.indices.length === 0) {
-    throw new Error(`${label}: lit mesh has empty geometry`);
+    throw new Error(`${label}/${name}: lit mesh has empty geometry`);
   }
-  assertFiniteArray(mesh.positions, `${label} positions`);
-  assertFiniteArray(mesh.normals, `${label} normals`);
+  if (mesh.positions.length % 3 !== 0) {
+    throw new Error(`${label}/${name}: positions must be an xyz array`);
+  }
+  if (mesh.normals.length !== mesh.positions.length) {
+    throw new Error(`${label}/${name}: normals must match positions`);
+  }
+  if (mesh.indices.length % 3 !== 0) {
+    throw new Error(`${label}/${name}: indices must be a triangle list`);
+  }
+  const vertexCount = mesh.positions.length / 3;
+  for (let i = 0; i < mesh.indices.length; i += 1) {
+    if (mesh.indices[i] >= vertexCount) {
+      throw new Error(`${label}/${name}: index ${mesh.indices[i]} is out of range`);
+    }
+  }
+  assertFinite(mesh.positions, `${label}/${name} positions`);
+  assertFinite(mesh.normals, `${label}/${name} normals`);
+  if (mesh.albedo !== undefined) {
+    if (!Array.isArray(mesh.albedo) || mesh.albedo.length !== 3 || mesh.albedo.some((v) => !Number.isFinite(v))) {
+      throw new Error(`${label}/${name}: albedo must be three finite values`);
+    }
+  }
 }
 
 function unwrapObject(
   sceneId: string,
-  input: SceneMesh,
+  input: MeshInput,
   output: Mesh,
   width: number,
   height: number
 ): UnwrappedObject {
-  const label = `${sceneId}/${input.name}`;
+  const name = input.name || "mesh";
+  const label = `${sceneId}/${name}`;
   if (output.indexCount === 0) throw new Error(`${label}: xatlas output has no indices`);
   if (output.indices.length % 3 !== 0) throw new Error(`${label}: xatlas output is not triangles`);
 
@@ -173,19 +172,21 @@ function unwrapObject(
   }
 
   const indices = new Uint32Array(output.indices);
-  assertFiniteArray(positions, `${label} positions`);
-  assertFiniteArray(normals, `${label} normals`);
-  assertFiniteArray(uvs, `${label} uvs`);
+  assertFinite(positions, `${label} positions`);
+  assertFinite(normals, `${label} normals`);
+  assertFinite(uvs, `${label} uvs`);
   validateUvTriangles(label, uvs, indices);
 
+  const albedo: Vec3 = input.albedo ?? [0.8, 0.8, 0.8];
+
   return {
-    name: input.name,
+    name,
     positions,
     normals,
     uvs,
     indices,
     charts,
-    albedo: input.albedo ?? [0.8, 0.8, 0.8],
+    albedo,
     triangleCount: indices.length / 3,
     chartCount: output.chartCount
   };
@@ -202,12 +203,24 @@ function validateUvTriangles(label: string, uvs: Float32Array, indices: Uint32Ar
     const vb = uvs[b + 1];
     const uc = uvs[c];
     const vc = uvs[c + 1];
-    if (ua < 0 || ua >= 1 || va < 0 || va >= 1 || ub < 0 || ub >= 1 || vb < 0 || vb >= 1 || uc < 0 || uc >= 1 || vc < 0 || vc >= 1) {
+    if (
+      ua < 0 || ua >= 1 || va < 0 || va >= 1 ||
+      ub < 0 || ub >= 1 || vb < 0 || vb >= 1 ||
+      uc < 0 || uc >= 1 || vc < 0 || vc >= 1
+    ) {
       throw new Error(`${label}: UV outside [0, 1) at triangle ${i / 3}`);
     }
     const area = Math.abs((ub - ua) * (vc - va) - (uc - ua) * (vb - va)) * 0.5;
     if (!(area > UV_AREA_EPSILON)) {
       throw new Error(`${label}: degenerate UV triangle ${i / 3} (area ${area})`);
+    }
+  }
+}
+
+function assertFinite(values: Float32Array, label: string): void {
+  for (let i = 0; i < values.length; i += 1) {
+    if (!Number.isFinite(values[i])) {
+      throw new Error(`${label}: non-finite value at index ${i}: ${values[i]}`);
     }
   }
 }

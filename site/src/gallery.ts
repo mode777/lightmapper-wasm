@@ -75,7 +75,7 @@ export function createGallery(_route: Route): View {
         el("p", {
           className: "hero-lead",
           textContent:
-            "Seven scenes, one raw-WebGL bake harness and a shared xatlas atlas. Every lightmap is computed on the GPU from the same wasm artifact the package ships."
+            "Seven scenes, one studio bake pipeline and a shared xatlas atlas. Every lightmap is computed on the GPU from the same wasm artifacts the package ships."
         }),
         el(
           "p",

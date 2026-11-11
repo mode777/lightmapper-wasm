@@ -57,21 +57,23 @@ workflow unless the user explicitly asks for one.
   layout.
 - `openspec/specs/c-library-port/` — the upstream WebGL2 contract consumed by
   this package.
-- `site/README.md` — the showcase consumer, scene/atlas contract, harness and
+- `site/README.md` — the showcase consumer, scene/atlas contract, studio and
   display boundaries, thumbnails and deployment.
+- `studio/README.md` — the private `lightmap-studio` package API, lighting
+  model, presets and loader contract.
 
 ## Verification before push
 
 The full pipeline must be green before pushing to `Main`:
 
 ```bash
-npm run verify:remote   # builds WASM with emsdk and runs the root + site suites on the verification box
+npm run verify:remote   # builds WASM with emsdk and runs the root, studio and site suites on the verification box
 ```
 
 Requires `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD` in the environment and
 `CHROME_SHELL_PATH` (or the default chrome-headless-shell location). CI runs
-the root tests, the golden bake and the site typecheck/tests/harness/smoke on
-every push to `Main`.
+the root tests, the golden bake, the studio unit/consumer/headless suites and
+the site typecheck/tests/harness/smoke on every push to `Main`.
 
 ## Repo quick facts
 

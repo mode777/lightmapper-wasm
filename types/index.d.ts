@@ -229,6 +229,20 @@ export interface LightmapperModule extends LightmapperConstants {
   lmSetCosineWeights(ctx: LmContextHandle): void;
 
   /**
+   * Reset the lightmapper's randomized hemisphere rotation jitter.
+   *
+   * The lightmapper adds a small random rotation to each hemisphere sample to
+   * break up structured sampling patterns. That jitter uses the C `rand()`
+   * sequence, so repeated bakes in one module instance can differ. Calling
+   * this before a bake makes the jitter sequence reproducible. The call does
+   * not require a WebGL context.
+   *
+   * @param seed - Non-negative integer seed.
+   * @throws If the seed is not a non-negative integer.
+   */
+  lmSeed(seed: number): void;
+
+  /**
    * Destroy a lightmapper context and free its native resources.
    * @param ctx - Context handle returned by {@link lmCreate}.
    */

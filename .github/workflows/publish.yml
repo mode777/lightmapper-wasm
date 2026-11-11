@@ -65,6 +65,21 @@ jobs:
       - name: Assemble dist folder
         run: npm run build:dist
 
+      - name: Install studio dependencies
+        run: npm ci --prefix studio
+
+      - name: Build studio
+        run: npm run build --prefix studio
+
+      - name: Studio typecheck and unit tests
+        run: |
+          npm run typecheck --prefix studio
+          npm test --prefix studio
+          npm run test:consumer --prefix studio
+
+      - name: Root pack boundary test
+        run: npm run test:pack
+
       - name: Verify dist artifacts
         run: |
           test -f dist/index.js
@@ -97,6 +112,11 @@ jobs:
 
       - name: Browser golden bake test
         run: npm run test:bake
+        env:
+          CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
+
+      - name: Studio headless test
+        run: npm run test:headless --prefix studio
         env:
           CHROME_SHELL_PATH: ${{ steps.chrome.outputs.path }}
 
@@ -140,6 +160,12 @@ jobs:
         with:
           name: lightmapper-dist
           path: dist
+
+      - name: Install studio dependencies
+        run: npm ci --prefix studio
+
+      - name: Build studio
+        run: npm run build --prefix studio
 
       - name: Install site dependencies
         run: npm ci --prefix site

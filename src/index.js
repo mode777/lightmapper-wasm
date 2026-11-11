@@ -531,6 +531,13 @@ export async function createLightmapperModule(options = {}) {
     return ctx;
   }
 
+  function lmSeed(seed) {
+    if (!Number.isInteger(seed) || seed < 0) {
+      throw new TypeError(`seed must be a non-negative integer, got ${seed}`);
+    }
+    mod._srand(seed >>> 0);
+  }
+
   function lmSetCosineWeights(ctx) {
     assertPointer("ctx", ctx);
     assertBoundContextCurrent();
@@ -678,6 +685,7 @@ export async function createLightmapperModule(options = {}) {
     makeBeginFrameBuffers,
     lmCreate,
     lmSetCosineWeights,
+    lmSeed,
     lmDestroy,
     lmSetTargetLightmap,
     lmSetGeometry,

@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { validateBakeEnvironment } from "../src/bake/environment";
-import type { BakeEnvironment } from "../src/bake/types";
+import { validateBakeEnvironment, type EnvironmentInput } from "lightmap-studio";
 import {
   createProceduralSkyEnvironment,
   DEFAULT_PROCEDURAL_SKY_HEIGHT,
@@ -28,7 +27,7 @@ function sky(overrides: Partial<ProceduralSky> = {}): ProceduralSky {
   };
 }
 
-function pixel(environment: BakeEnvironment, x: number, y: number): [number, number, number] {
+function pixel(environment: EnvironmentInput, x: number, y: number): [number, number, number] {
   const offset = (y * environment.width + x) * 4;
   return [
     environment.data[offset],
@@ -37,7 +36,7 @@ function pixel(environment: BakeEnvironment, x: number, y: number): [number, num
   ];
 }
 
-function brightestPixel(environment: BakeEnvironment): { x: number; y: number; value: number } {
+function brightestPixel(environment: EnvironmentInput): { x: number; y: number; value: number } {
   let best = { x: 0, y: 0, value: -1 };
   for (let y = 0; y < environment.height; y += 1) {
     for (let x = 0; x < environment.width; x += 1) {

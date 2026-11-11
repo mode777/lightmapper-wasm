@@ -12,7 +12,7 @@ export default defineConfig({
   // `new URL(..., import.meta.url)`. Keeping them out of the dependency
   // optimizer leaves that expression intact so Vite emits the assets.
   optimizeDeps: {
-    exclude: ["lightmapper-wasm", "xatlas-wasm"]
+    exclude: ["lightmap-studio", "lightmapper-wasm", "xatlas-wasm"]
   },
   server: {
     host: "127.0.0.1",

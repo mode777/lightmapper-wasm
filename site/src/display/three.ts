@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { BakeResult } from "../bake/types";
-import type { UnwrappedObject, UnwrappedScene } from "../atlas/types";
+import type { UnwrappedObject, UnwrappedScene } from "lightmap-studio";
 import type { SceneCamera } from "../demos/types";
 import {
   applyDisplayMode,
@@ -10,6 +9,7 @@ import {
   createLightmapTexture,
   createLitMaterial,
   lightmapFilterFor,
+  type LightmapData,
   type DisplayMode,
   type Vec3
 } from "./materials";
@@ -147,7 +147,7 @@ export class ThreeDisplay {
     return this.environmentTexture;
   }
 
-  setScene(scene: UnwrappedScene, result?: BakeResult, camera?: SceneCamera): void {
+  setScene(scene: UnwrappedScene, result?: LightmapData, camera?: SceneCamera): void {
     if (this.disposed) throw new DisplayError("display has been disposed");
     this.clearObject();
     this.lightmap = result ? createLightmapTexture(result, this.renderer.getContext()) : null;
@@ -189,7 +189,7 @@ export class ThreeDisplay {
     this.renderOnce();
   }
 
-  updateLightmap(result: BakeResult): void {
+  updateLightmap(result: LightmapData): void {
     if (this.disposed) throw new DisplayError("display has been disposed");
     if (!this.lightmap) {
       this.lightmap = createLightmapTexture(result, this.renderer.getContext());

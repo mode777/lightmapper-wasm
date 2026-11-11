@@ -3,3 +3,5 @@
 /dist
 /site/node_modules
 /site/dist
+/studio/node_modules
+/studio/dist

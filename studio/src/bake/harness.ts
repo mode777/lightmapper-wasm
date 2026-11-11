@@ -7,19 +7,19 @@ import {
   requireUniform,
   uploadFloatTexture,
   type BufferSet
-} from "./gl";
+} from "./gl.js";
 import {
   environmentIntensity,
   environmentRayDirections,
   validateBakeEnvironment
-} from "./environment";
+} from "./environment.js";
 import {
   BAKE_FRAGMENT_SHADER,
   BAKE_VERTEX_SHADER,
   ENVIRONMENT_FRAGMENT_SHADER,
   ENVIRONMENT_VERTEX_SHADER
-} from "./shaders";
-import { computeBakeStats } from "./stats";
+} from "./shaders.js";
+import { computeBakeStats } from "./stats.js";
 import {
   BakeError,
   abortError,
@@ -29,13 +29,13 @@ import {
   type BakeObject,
   type BakeOptions,
   type BakeProgress,
-  type BakeResult,
+  type BakeSnapshot,
   type BakeScene,
   type BakeStage
-} from "./types";
+} from "./types.js";
 
 export interface BakeHarness {
-  bake(scene: BakeScene, options?: BakeOptions): Promise<BakeResult>;
+  bake(scene: BakeScene, options?: BakeOptions): Promise<BakeSnapshot>;
   dispose(): void;
   readonly gl: WebGL2RenderingContext;
   readonly module: LightmapperModule;
@@ -88,17 +88,21 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
   }
 
   let module: LightmapperModule;
-  try {
-    module = await createLightmapperModule({
-      webglContext: gl,
-      locateWasm: options.locateWasm,
-      strictContextBinding: true
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new BakeError(`lightmapper.wasm initialization failed: ${message}`, "module", {
-      cause: error
-    });
+  if (options.module) {
+    module = options.module;
+  } else {
+    try {
+      module = await createLightmapperModule({
+        webglContext: gl,
+        locateWasm: options.locateWasm,
+        strictContextBinding: true
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BakeError(`lightmapper.wasm initialization failed: ${message}`, "module", {
+        cause: error
+      });
+    }
   }
 
   const program = createProgram(gl, BAKE_VERTEX_SHADER, BAKE_FRAGMENT_SHADER);
@@ -132,7 +136,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
     get disposed(): boolean {
       return disposed;
     },
-    async bake(scene: BakeScene, bakeOptions: BakeOptions = {}): Promise<BakeResult> {
+    async bake(scene: BakeScene, bakeOptions: BakeOptions = {}): Promise<BakeSnapshot> {
       if (disposed) throw new BakeError("bake harness has been disposed", "disposed");
       throwIfAborted(bakeOptions.signal);
 
@@ -175,7 +179,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       const floatCount = width * height * 4;
       const startedAt = now();
       const progress = createProgressReporter(bakeOptions.onProgress, bounces, validated.lit.length);
-      const snapshots: BakeResult[] = [];
+      const snapshots: BakeSnapshot[] = [];
 
       progress.emit("prepare", 0, 0, 0);
       module.makeBoundContextCurrent();
@@ -191,6 +195,9 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
       try {
         lightmapPtr = module.allocF32(floatCount);
         tempPtr = module.allocF32(floatCount);
+        // The post-process passes use this as a ping-pong buffer. Zero it so a
+        // reused wasm heap cannot leak a previous bake into dilation edges.
+        module.viewF32(tempPtr, floatCount).fill(0);
 
         for (const object of validated.lit) {
           heapObjects.push({
@@ -372,7 +379,7 @@ export async function createBakeHarness(options: BakeHarnessOptions = {}): Promi
           progress.emit("readback", (bounce + 1) / bounces, bounce, heapObjects.length);
           const snapshot = module.copyFromHeap(lightmapPtr, new Float32Array(floatCount));
           const stats = computeBakeStats(snapshot);
-          const result: BakeResult = {
+          const result: BakeSnapshot = {
             lightmap: snapshot,
             width,
             height,

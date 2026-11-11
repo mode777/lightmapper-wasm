@@ -1,8 +1,34 @@
-import { describe, expect, it } from "vitest";
-import { normalizeAtlasUv, unwrapScene, UV_MAX } from "../src/atlas/unwrap";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  createStudio,
+  normalizeAtlasUv,
+  UV_MAX,
+  type MeshInput,
+  type Studio,
+  type UnwrappedObject
+} from "lightmap-studio";
 import { SCENARIOS } from "../src/demos";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
-import type { UnwrappedObject } from "../src/atlas/types";
+import type { SceneDefinition } from "../src/demos/types";
+
+let studio: Studio;
+
+function litInputs(scenario: SceneDefinition): MeshInput[] {
+  return scenario
+    .build()
+    .filter((mesh) => mesh.kind === "lit")
+    .map((mesh) => ({
+      name: mesh.name,
+      positions: mesh.positions,
+      normals: mesh.normals!,
+      indices: mesh.indices,
+      albedo: mesh.albedo
+    }));
+}
+
+function unwrapScenario(scenario: SceneDefinition) {
+  return studio.unwrap(litInputs(scenario), { size: scenario.bake.atlasSize });
+}
 
 function expectSafeUvs(object: UnwrappedObject): void {
   const { uvs, indices } = object;
@@ -23,10 +49,18 @@ function expectSafeUvs(object: UnwrappedObject): void {
   }
 }
 
+beforeAll(async () => {
+  studio = await createStudio();
+});
+
+afterAll(() => {
+  studio.dispose();
+});
+
 describe("xatlas unwrap pipeline", () => {
   for (const scenario of SCENARIOS) {
     it(`unwraps ${scenario.meta.id} into a non-empty shared atlas`, async () => {
-      const result = await unwrapScene(scenario);
+      const result = await unwrapScenario(scenario);
       expect(result.litObjects.length).toBeGreaterThan(0);
       expect(result.atlas.width).toBeGreaterThan(0);
       expect(result.atlas.height).toBeGreaterThan(0);
@@ -54,19 +88,19 @@ describe("xatlas unwrap pipeline", () => {
 
   it("keeps one output mesh per lit input mesh", async () => {
     const inputLit = tabletopAtlas.build().filter((mesh) => mesh.kind === "lit");
-    const result = await unwrapScene(tabletopAtlas);
+    const result = await unwrapScenario(tabletopAtlas);
     expect(result.litObjects.length).toBe(inputLit.length);
     expect(result.litObjects.length).toBeGreaterThanOrEqual(4);
     for (const object of result.litObjects) expect(object.triangleCount).toBeGreaterThan(0);
   });
 
-  it("excludes emitters from atlas charts", async () => {
+  it("does not put emitters in the atlas", async () => {
     const inputEmissive = tabletopAtlas.build().filter((mesh) => mesh.kind === "emissive");
-    const result = await unwrapScene(tabletopAtlas);
-    expect(result.emissiveObjects.length).toBe(inputEmissive.length);
-    expect(result.emissiveObjects.length).toBeGreaterThan(0);
-    expect(result.litObjects.length + result.emissiveObjects.length).toBe(
-      tabletopAtlas.build().length
+    const result = await unwrapScenario(tabletopAtlas);
+    expect(inputEmissive.length).toBeGreaterThan(0);
+    expect(result.emissiveObjects.length).toBe(0);
+    expect(result.litObjects.length).toBe(
+      tabletopAtlas.build().filter((mesh) => mesh.kind === "lit").length
     );
   });
 });
@@ -80,8 +114,6 @@ describe("[0, 1) UV clamp", () => {
   });
 
   it("proves an unclamped edge would wrap to 0.0", () => {
-    // Deliberately unclamped normalization is what the lightmapper's
-    // lm_pmod2(uv, 1.0) would turn into 0.0.
     const unclamped = (texel: number, size: number): number => texel / size;
     expect(unclamped(512, 512)).toBe(1);
     expect(1 % 1).toBe(0);

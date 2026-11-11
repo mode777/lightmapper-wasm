@@ -1,6 +1,11 @@
-import { BakeError } from "./types";
+import { BakeError } from "./types.js";
 
-export function compileShader(gl: WebGL2RenderingContext, type: number, source: string, label: string): WebGLShader {
+export function compileShader(
+  gl: WebGL2RenderingContext,
+  type: number,
+  source: string,
+  label: string
+): WebGLShader {
   const shader = gl.createShader(type);
   if (!shader) throw new BakeError(`could not create ${label} shader`, "gl");
   gl.shaderSource(shader, source);

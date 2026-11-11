@@ -1,7 +1,12 @@
 import * as THREE from "three";
-import type { BakeResult } from "../bake/types";
-
 export type Vec3 = [number, number, number];
+
+/** Minimal lightmap shape shared by the studio result and the low-level harness. */
+export interface LightmapData {
+  lightmap: Float32Array;
+  width: number;
+  height: number;
+}
 
 export type DisplayMode = "lit" | "unlit";
 
@@ -14,7 +19,7 @@ export function lightmapFilterFor(context: FloatLinearQuery | null): THREE.Magni
 }
 
 export function createLightmapTexture(
-  result: BakeResult,
+  result: LightmapData,
   context: FloatLinearQuery | null = null
 ): THREE.DataTexture {
   const filter = lightmapFilterFor(context);

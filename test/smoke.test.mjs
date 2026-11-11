@@ -169,6 +169,17 @@ check("exposes lmSetCosineWeights", () => {
   assert.equal(typeof lm.lmSetCosineWeights, "function");
 });
 
+check("exposes lmSeed and accepts a non-negative integer", () => {
+  assert.equal(typeof lm.lmSeed, "function");
+  lm.lmSeed(0);
+  lm.lmSeed(42);
+});
+
+check("negative: lmSeed rejects a non-integer seed", () => {
+  expectThrows(() => lm.lmSeed(1.5), /non-negative integer/);
+  expectThrows(() => lm.lmSeed(-1), /non-negative integer/);
+});
+
 check("negative: lmSetCosineWeights without a bound context throws a context-binding error", () => {
   expectThrows(
     () => lm.lmSetCosineWeights(1),

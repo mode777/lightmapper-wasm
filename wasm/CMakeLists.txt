@@ -35,7 +35,7 @@ target_link_options(${LM_WASM_TARGET}
         "-sMIN_WEBGL_VERSION=2"
         "-sMAX_WEBGL_VERSION=2"
         "-sEXPORTED_RUNTIME_METHODS=['HEAPU8','HEAPU16','HEAPU32','HEAPF32','GL']"
-        "-sEXPORTED_FUNCTIONS=['_malloc','_free','_lmwCreate','_lmwSetCosineWeights','_lmwDestroy','_lmwSetTargetLightmap','_lmwSetGeometry','_lmwBegin','_lmwEnd','_lmwProgress','_lmwImageMin','_lmwImageMax','_lmwImageAdd','_lmwImageScale','_lmwImagePower','_lmwImageDilate','_lmwImageSmooth','_lmwImageDownsample','_lmwImageFtoUB','_lmwLM_NONE','_lmwLM_UNSIGNED_BYTE','_lmwLM_UNSIGNED_SHORT','_lmwLM_UNSIGNED_INT','_lmwLM_FLOAT','_lmwLM_FALSE','_lmwLM_TRUE','_lmwLM_ALL_CHANNELS','_lmwGetCurrentContext','_lmwMakeContextCurrent']"
+        "-sEXPORTED_FUNCTIONS=['_malloc','_free','_srand','_lmwCreate','_lmwSetCosineWeights','_lmwDestroy','_lmwSetTargetLightmap','_lmwSetGeometry','_lmwBegin','_lmwEnd','_lmwProgress','_lmwImageMin','_lmwImageMax','_lmwImageAdd','_lmwImageScale','_lmwImagePower','_lmwImageDilate','_lmwImageSmooth','_lmwImageDownsample','_lmwImageFtoUB','_lmwLM_NONE','_lmwLM_UNSIGNED_BYTE','_lmwLM_UNSIGNED_SHORT','_lmwLM_UNSIGNED_INT','_lmwLM_FLOAT','_lmwLM_FALSE','_lmwLM_TRUE','_lmwLM_ALL_CHANNELS','_lmwGetCurrentContext','_lmwMakeContextCurrent']"
         "--no-entry"
 )
 

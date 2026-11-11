@@ -1,5 +1,4 @@
-import { validateBakeEnvironment } from "../bake/environment";
-import type { BakeEnvironment, Vec3 } from "../bake/types";
+import { validateEnvironment, type EnvironmentInput, type Vec3 } from "lightmap-studio";
 import type { FloatLinearQuery } from "../display/materials";
 import {
   EnvironmentError,
@@ -193,7 +192,7 @@ function resolveSunVariant(
 export function generateProceduralSky(
   sky: ProceduralSky,
   sunVariant?: ProceduralSunVariant
-): BakeEnvironment {
+): EnvironmentInput {
   const resolved = resolveProceduralSky(sky);
   const { width, height } = resolved;
   const data = new Float32Array(width * height * 4);
@@ -237,13 +236,13 @@ export function generateProceduralSky(
     }
   }
 
-  const environment: BakeEnvironment = {
+  const environment: EnvironmentInput = {
     width,
     height,
     data,
     intensity: resolved.intensity
   };
-  validateBakeEnvironment(environment);
+  validateEnvironment(environment);
   return environment;
 }
 
@@ -262,6 +261,7 @@ export function createProceduralSkyEnvironment(
     : displayEnvironment;
   return {
     environment,
+    display: displayEnvironment,
     texture: createEnvironmentTexture(displayEnvironment, context)
   };
 }

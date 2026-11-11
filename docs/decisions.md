@@ -27,6 +27,11 @@ implemented) · **Superseded** (replaced by a newer ADR).
 | AD-015 | The showcase is a separate consumer deployed from the tested artifact | Accepted |
 | AD-016 | Use xatlas for every showcase lightmap atlas with a `[0,1)` UV clamp | Accepted |
 | AD-017 | Bake linear equirectangular HDRI environments in the showcase | Accepted |
+| AD-020 | Well-sampled area sun and cosine weighting in the showcase | Accepted |
+| AD-021 | Lightmap studio is a separate, engine-agnostic package; the AD-018/AD-019 promotion reservation is withdrawn | Accepted |
+| AD-022 | Studio lighting is environment plus emissive geometry plus point-light sphere proxies; no directional-light input | Accepted |
+| AD-023 | The studio loader lazily loads two wasm binaries through one option surface with preflight and typed errors | Accepted |
+| AD-024 | Seed the lightmapper rotation jitter before each studio bake so repeated bakes are deterministic | Accepted |
 
 ---
 
@@ -261,8 +266,9 @@ build workflow uploads the tested `dist` artifact; a `site` job downloads it,
 installs `site/`, typechecks, runs the site tests, the harness test and the
 smoke bake, builds with `SITE_BASE=/lightmapper-wasm/` and checks the production
 layout; a `deploy` job publishes that output to GitHub Pages only on `Main`
-pushes or manual dispatch. The site-local bake harness and three.js display
-remain package-shaped and are promoted by follow-up changes (AD-018/AD-019).
+pushes or manual dispatch. The site-local bake harness and unwrap pipeline
+move into the private `lightmap-studio` package (AD-021); the three.js display
+stays a sample consumer and is not part of that package.
 
 **Consequences.** The Pages source must be GitHub Actions and the deployed URL
 is `https://mode777.github.io/lightmapper-wasm/`. CI never installs
@@ -288,8 +294,8 @@ after all objects finish each bounce.
 **Consequences.** `xatlas-wasm` is a site-only dependency; the core package
 remains dependency-free. The Atlas view and the scene tests depend on the same
 pipeline, and the `[0,1)` bound is a tested invariant rather than a convention.
-Promoting the harness and display to package entries (AD-018/AD-019) keeps this
-UV contract unchanged.
+The studio package (AD-021) keeps this UV contract unchanged; three.js remains
+sample-only.
 
 ## AD-017 — HDRI environment baking in the showcase {#ad-017}
 
@@ -315,8 +321,7 @@ site-only and excluded from the npm tarball. Prefiltering the diffuse
 environment and using a fine interpolation pass plus twelve smoothing passes
 avoids the softbox/sun-grid aliasing and coarse interpolation diamonds seen
 with raw 1k HDRIs. Environment orientation, intensity, validation and lifecycle
-are covered by headless WebGL2 tests. The future `lightmapper-wasm/bake`
-promotion (AD-018) must preserve the environment input.
+are covered by headless WebGL2 tests. The studio package (AD-021/AD-023) must preserve the environment input.
 
 ## AD-020 — Well-sampled area sun and cosine weighting in the showcase {#ad-020}
 
@@ -346,5 +351,105 @@ sun shadows. The two outdoor scenes use cosine weighting and recalibrated
 exposure; `hdri-outdoor` remains an intentionally multi-source partly cloudy
 environment. The wasm shim and wrapper gain one additive method, but there is
 no `lightmapper.h` change, no submodule bump, and no package entry or artifact
-layout change. This decision extends AD-017; it does not supersede it. AD-018
-and AD-019 remain reserved for the harness/display promotion.
+layout change. This decision extends AD-017; it does not supersede it. AD-021
+withdraws the AD-018/AD-019 reservation: the studio owns the harness, while
+three.js remains a sample-only display dependency.
+
+
+## AD-021 — Lightmap studio is a separate, engine-agnostic package {#ad-021}
+
+**Context.** The reusable part of the showcase (xatlas unwrap, shared-atlas bake
+harness, environment prefilter and quality presets) lives next to demo scenes,
+a gallery and a three.js display. A consumer that wants "unwrap my meshes and
+bake a lightmap" must copy code out of `site/`. The reserved AD-018/AD-019
+promotions would have split the workflow across `lightmapper-wasm/bake` and
+`lightmapper-wasm/three`, kept xatlas out of the result, and still required the
+consumer to compose the pieces.
+
+**Decision.** Withdraw the AD-018/AD-019 promotion reservation. Introduce a
+separate `lightmap-studio` package with an engine-agnostic API that owns the
+mesh-to-lightmap path: shared xatlas atlas, WebGL2 bake, environment
+prefiltering, presets and plain-data results. Stage the work in three changes:
+isolate the code as a private package inside this repository, extract it to its
+own repository and publish it, then remove the local copy and consume the npm
+package from the sample. three.js is a sample-only display dependency; the
+studio never bundles or exports it.
+
+**Consequences.** The root `lightmapper-wasm` package keeps its existing entries
+and zero runtime dependencies. The studio depends on both `lightmapper-wasm` and
+`xatlas-wasm`. The showcase becomes a consumer of the private studio package
+before the repository split. The ADR log and roadmap must describe the staged
+state, not the withdrawn promotion. `site/` may keep sample-only display code,
+but it must not own the unwrap or bake implementation.
+
+## AD-022 — Studio lighting is environment plus geometry {#ad-022}
+
+**Context.** The lightmapper has no punctual or directional light model: it
+integrates radiance from the geometry and sky the caller draws during each
+hemisphere pass. The showcase already covers the useful cases with an
+equirectangular environment, emissive meshes and a procedural sky that is
+generated into environment data.
+
+**Decision.** The studio exposes one lighting input: an optional linear
+equirectangular environment as the only sky source, an optional ambient color,
+emissive meshes as area lights, and point lights. There is no directional-light
+input. A point light is `{ position, color, power, radius? }`; the studio models
+it as an emissive sphere with uniform radiance
+`power / (4 * pi^2 * radius^2)`, using a documented default radius and returning
+the proxy geometry in the result. The procedural sky remains a sample-local
+environment generator.
+
+**Consequences.** Sky lighting must be supplied as HDRI or generated
+environment data; a caller cannot ask the studio for a sun/directional light.
+Point-light shadows are area-light shadows whose softness follows the proxy
+radius. The result includes the generated proxies so a sample can render the
+same bulb. This decision builds on AD-017 and AD-020 and does not change the C
+library.
+
+## AD-023 — Studio loader and asset contract {#ad-023}
+
+**Context.** The studio sits on two wasm packages with different loader
+vocabulary (`locateWasm` versus `locateFile`), different runtime targets
+(lightmapper is browser-only; xatlas also runs in Node and workers) and a
+capability probe that must precede the lightmapper fetch. Consumers should not
+have to understand both loaders to use one library.
+
+**Decision.** Expose one `wasm` option with `lightmapper` and `xatlas` entries,
+each accepting `binary` bytes or a `url`. Add a `modules` injection point for
+callers that already own an initialized module. Resolution order per module is
+injected module, then binary, then URL, then the dependency's own default asset
+resolution. Loading is lazy: studio creation fetches nothing, unwrap loads
+xatlas, and bake probes WebGL2/`EXT_color_buffer_float` before loading
+lightmapper. Failures use one `StudioError` code set and preserve the original
+error as the cause. The studio does not reimplement asset path logic, so the
+proven bundler behavior of both packages is preserved.
+
+**Consequences.** A bundler consumer emits two wasm assets. `unwrap` works
+without WebGL; `bake` fails with the `webgl2` code when no context exists.
+Injected modules remain caller-owned and are not disposed by the studio.
+Callers do not need to use `locateWasm` or `locateFile` directly, but those
+escape hatches remain available through the underlying packages.
+
+## AD-024 — Deterministic rotation seed {#ad-024}
+
+**Context.** The lightmapper adds a small `0.1 rad` random rotation to each
+hemisphere sample to break up structured sampling patterns. The jitter draws
+from the C `rand()` sequence, so a second bake in the same module instance
+uses a different sequence and produces a different lightmap. The golden tests,
+quality comparisons and the studio's deterministic-output contract need a
+reproducible sequence.
+
+**Decision.** Export `srand` from the wasm module, add an additive
+`lmSeed(seed)` wrapper method and declarations, and call `lmSeed(0)` before
+each studio bake. The method needs no WebGL context and rejects a non-negative
+integer requirement violation. The jitter amplitude and sampling math are
+unchanged. Re-instantiating the lightmapper module per bake was rejected
+because it costs a new wasm instantiation and heap per bake and can leak module
+instances.
+
+**Consequences.** The root package gains one additive method and a wasm
+rebuild; its entries and existing behavior are otherwise unchanged. Repeated
+bakes of the same scene and options produce the same atlas and lightmap
+values, which the studio headless suite asserts. A caller that wants a
+different jitter sequence can still call `lmSeed` with another seed before a
+bake.

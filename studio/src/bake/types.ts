@@ -1,8 +1,10 @@
-/** Local copy keeps the bake harness free of site-specific imports. */
-export type Vec3 = [number, number, number];
-
-/** Lightmapper hemisphere weighting. Uniform is the library default. */
-export type HemisphereWeight = "uniform" | "cosine";
+import type { LightmapperModule } from "lightmapper-wasm";
+import type {
+  BakeStats,
+  EnvironmentInput,
+  HemisphereWeight,
+  Vec3
+} from "../types.js";
 
 export type BakeStage = "prepare" | "bounce" | "postprocess" | "readback" | "done";
 
@@ -36,34 +38,19 @@ export interface BakeEmissiveObject extends BakeObjectBase {
 
 export type BakeObject = BakeLitObject | BakeEmissiveObject;
 
-export interface BakeEnvironment {
-  width: number;
-  height: number;
-  /** Linear RGBA radiance, bottom-up: row 0 is the south pole (v = 0). */
-  data: Float32Array;
-  /** Linear radiance multiplier; defaults to 1. */
-  intensity?: number;
-}
+export type BakeEnvironment = EnvironmentInput;
 
 export interface BakeScene {
   atlas: { width: number; height: number };
   ambient: Vec3;
   objects: BakeObject[];
-  /** Optional equirectangular HDRI drawn as the bake skybox. */
+  /** Optional equirectangular environment drawn as the bake skybox. */
   environment?: BakeEnvironment;
   /** Scene-level hemisphere weighting; bake options override it. */
   hemisphereWeight?: HemisphereWeight;
 }
 
-export interface BakeStats {
-  mean: number;
-  min: number;
-  max: number;
-  nonBlackRatio: number;
-  litPixels: number;
-}
-
-export interface BakeResult {
+export interface BakeSnapshot {
   lightmap: Float32Array;
   width: number;
   height: number;
@@ -98,7 +85,7 @@ export interface BakeOptions {
   /** Absolute radiance error below which lmCreate interpolates. */
   interpolationThreshold?: number;
   onProgress?: (progress: BakeProgress) => void;
-  onBounce?: (result: BakeResult) => void;
+  onBounce?: (result: BakeSnapshot) => void;
   signal?: AbortSignal;
   /** Cooperative yield used between batches; defaults to requestAnimationFrame. */
   yieldToMain?: () => Promise<void>;
@@ -109,6 +96,8 @@ export interface BakeHarnessOptions {
   canvas?: HTMLCanvasElement | OffscreenCanvas;
   webglContext?: WebGL2RenderingContext;
   locateWasm?: (filename: string) => string | URL;
+  /** Reuse an initialized lightmapper module instead of loading one. */
+  module?: LightmapperModule;
   testHooks?: BakeTestHooks;
 }
 
@@ -137,6 +126,7 @@ export function abortError(message = "bake aborted"): BakeError {
 
 export function isAbortError(error: unknown): boolean {
   return (
-    error instanceof BakeError && error.code === "aborted"
-  ) || (error instanceof DOMException && error.name === "AbortError");
+    (error instanceof BakeError && error.code === "aborted") ||
+    (error instanceof DOMException && error.name === "AbortError")
+  );
 }
