@@ -160,3 +160,94 @@ outputs, and a disposable context lifecycle.
 #### Scenario: Disposal
 - **WHEN** the harness is disposed
 - **THEN** its contexts, textures, buffers and heap allocations are released
+
+### Requirement: Equirectangular environment lighting
+
+The harness SHALL accept an optional linear equirectangular HDR environment in
+the bake scene, described by width, height, RGBA float data and an intensity
+multiplier. When present, the harness SHALL draw the environment as a skybox for
+every lightmapper hemisphere side before scene geometry and SHALL include its
+radiance in the bake. When absent, the existing ambient and emissive behavior
+SHALL be unchanged.
+
+#### Scenario: Environment-only illumination
+- **WHEN** a scene has black ambient, no emissive objects and a non-black equirectangular environment
+- **THEN** the lightmap contains finite, non-zero light contributed by the environment
+
+#### Scenario: Black environment
+- **WHEN** the scene has black ambient, no emissive objects and a black environment
+- **THEN** the lightmap remains black
+
+#### Scenario: Environment is behind geometry
+- **WHEN** a bake draws geometry over the environment
+- **THEN** the environment is rendered behind the geometry and does not overwrite lit surfaces
+
+#### Scenario: Environment intensity
+- **WHEN** the same environment is baked with a higher intensity
+- **THEN** the resulting lightmap radiance is higher
+
+#### Scenario: Background orientation matches the bake
+- **WHEN** the same environment is displayed as the scene background
+- **THEN** the skybox orientation in the bake matches the visible background orientation
+
+#### Scenario: Invalid environment
+- **WHEN** the environment dimensions and data length do not match, or a value is non-finite or negative
+- **THEN** the bake rejects with an error naming the environment and the invalid value
+
+#### Scenario: Environment texture lifecycle
+- **WHEN** a bake with an environment completes, fails or is cancelled
+- **THEN** its environment texture and buffers are released and a later bake starts cleanly
+
+### Requirement: Configurable hemisphere weighting
+
+The harness SHALL accept an optional `hemisphereWeight` setting with the values
+`uniform` (the default) and `cosine`. When `cosine` is selected, the harness
+SHALL apply lightmapper's built-in cosine hemisphere weight to each lightmapper
+context before its first hemisphere pass. Invalid values SHALL be rejected.
+
+#### Scenario: Uniform remains the default
+- **WHEN** a scene does not select a hemisphere weight
+- **THEN** the bake uses lightmapper's existing all-ones weighting and the result matches the previous behavior
+
+#### Scenario: Cosine weight is applied
+- **WHEN** a scene selects cosine weighting
+- **THEN** the relevant lightmapper context is configured with a cosine weight before any hemisphere pass
+
+#### Scenario: Cosine applies to every object context
+- **WHEN** a multi-object scene selects cosine weighting
+- **THEN** every object's lightmapper context uses the cosine weight
+
+#### Scenario: Cosine changes the low-angle response
+- **WHEN** a scene is baked with a low sun and a bright horizon environment
+- **THEN** the cosine-weighted result reduces the contribution of grazing directions relative to the uniform result
+
+#### Scenario: Invalid weight is rejected
+- **WHEN** a caller selects a hemisphere weight other than `uniform` or `cosine`
+- **THEN** the bake rejects with a validation error naming the weight option
+
+#### Scenario: Context lifecycle remains valid
+- **WHEN** a cosine-weighted context is destroyed or a bake is cancelled
+- **THEN** the context and its weight resources are released without affecting later bakes
+
+### Requirement: Hemicube-only lighting path
+
+The harness SHALL derive lighting only from the caller-drawn scene, the ambient
+clear color and the optional environment through lightmapper's hemisphere
+passes. It SHALL NOT add a separate direct-light, shadow-map or analytic-light
+contribution.
+
+#### Scenario: No hidden light source
+- **WHEN** a scene has a black environment, black ambient and no emissive objects
+- **THEN** the returned lightmap remains black
+
+#### Scenario: Environment-only scene
+- **WHEN** a scene contains only a lit floor and an environment
+- **THEN** the returned lighting comes from the environment through the hemisphere passes
+
+#### Scenario: No shadow-map resources are required
+- **WHEN** a bake runs
+- **THEN** it does not require a shadow-map, depth-map or direct-light framebuffer beyond lightmapper's own hemisphere resources
+
+#### Scenario: Display remains bake-free
+- **WHEN** the harness returns a result
+- **THEN** the display layer is not required to perform any lighting or shadow pass
