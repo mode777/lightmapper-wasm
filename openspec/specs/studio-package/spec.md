@@ -144,21 +144,26 @@ The README SHALL document installation from the registry and the same public API
 - **WHEN** the README is searched for staging language
 - **THEN** it contains no "private stage", `file:../studio` or "not published" claim
 
-### Requirement: Staged handoff from the local copy
+### Requirement: Showcase consumes the published package
 
-The standalone repository SHALL become canonical while `lightmapper-wasm` keeps its `studio/` copy functionally unchanged for the showcase until the consume stage. Studio behavior SHALL NOT be forked between the two copies.
+The showcase SHALL install `lightmap-studio` from the npm registry at a version satisfying `^0.1.0` and SHALL NOT depend on a repository-relative studio path. The standalone repository remains the only source of studio code, tests and releases.
 
-#### Scenario: Showcase keeps its local dependency
+#### Scenario: Registry resolution
 
-- **WHEN** the bootstrap is complete
-- **THEN** `site/` still resolves `lightmap-studio` from `file:../studio`
+- **WHEN** `site/package.json` and the site lockfile are inspected
+- **THEN** `lightmap-studio` is a registry dependency with a version range and no `file:` studio spec remains
 
-#### Scenario: Local copy is frozen
+#### Scenario: No local studio checkout
 
-- **WHEN** documentation or package metadata in the local `studio/` copy is inspected
-- **THEN** it only adds the canonical-repository note and does not diverge in behavior from the published package
+- **WHEN** the repository tree is inspected
+- **THEN** it contains no `studio/` package, studio lockfile or studio build scripts
 
-#### Scenario: Root tarball still excludes the studio
+#### Scenario: Published build is unchanged
 
-- **WHEN** the `lightmapper-wasm` tarball is packed
-- **THEN** it still contains no `studio/` files or studio dependencies
+- **WHEN** the installed `lightmap-studio@0.1.0` entry is compared with the removed local build
+- **THEN** the JavaScript entry and its declarations are identical and the showcase bakes the same scene results
+
+#### Scenario: Studio gates stay with the studio repository
+
+- **WHEN** continuous integration or remote verification runs in this repository
+- **THEN** it does not build or unit-test a studio package, and the showcase suites exercise the installed registry package instead

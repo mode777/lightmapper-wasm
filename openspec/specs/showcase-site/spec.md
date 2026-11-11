@@ -203,17 +203,17 @@ loaded.
 - **WHEN** the lightmapper or xatlas wasm asset cannot be fetched
 - **THEN** the page shows an error naming the failed asset instead of a blank viewport
 
-### Requirement: Studio consumer boundary
+### Requirement: Published studio consumer boundary
 
-The showcase SHALL consume the private `lightmap-studio` package from the
-local checkout (`file:../studio`) and SHALL NOT contain its own unwrap or bake
-implementation. Demo scenes, the three.js display, the gallery and thumbnails
-SHALL remain site-local. The studio and xatlas dependencies SHALL stay out of
-the root package.
+The showcase SHALL consume the published `lightmap-studio@^0.1.0` package from the npm registry and SHALL NOT contain its own unwrap or bake implementation. It SHALL keep exactly one `lightmapper-wasm` copy, resolved to the repository's tested local `dist` artifact. Demo scenes, the three.js display, the gallery and thumbnails SHALL remain site-local. The studio and xatlas dependencies SHALL stay out of the root package.
 
-#### Scenario: Local studio dependency
+#### Scenario: Registry studio dependency
 - **WHEN** the site dependencies are installed
-- **THEN** `lightmap-studio` resolves from `studio/` and no registry copy is fetched
+- **THEN** `lightmap-studio` resolves from the npm registry tarball at a version satisfying `^0.1.0` and no local `studio/` link is installed
+
+#### Scenario: Single wrapper copy
+- **WHEN** the installed site dependency tree is inspected
+- **THEN** exactly one `lightmapper-wasm` entry exists and it resolves to the repository's local `file:..` link rather than a registry copy
 
 #### Scenario: Pipeline is not duplicated
 - **WHEN** the site source is inspected
@@ -225,4 +225,20 @@ the root package.
 
 #### Scenario: CI build order
 - **WHEN** the site job runs
-- **THEN** it builds the root `dist`, installs the linked studio, installs the site and then runs the site checks
+- **THEN** it builds the root `dist`, installs the site with the registry studio package and the local wrapper link, and runs the site checks without building a studio package
+
+### Requirement: Studio dependency drift is rejected
+
+The site verification SHALL fail with a clear message when the showcase stops consuming the published studio package or starts resolving more than one wrapper copy.
+
+#### Scenario: Local link reintroduced
+- **WHEN** the site lockfile resolves `lightmap-studio` from a filesystem link instead of a registry tarball
+- **THEN** the site dependency check fails and names the local resolution
+
+#### Scenario: Version leaves the supported range
+- **WHEN** the installed `lightmap-studio` version does not satisfy `^0.1.0`
+- **THEN** the site dependency check fails and reports the installed version
+
+#### Scenario: Second wrapper copy appears
+- **WHEN** the site lockfile contains a nested `lightmapper-wasm` entry beside the local link
+- **THEN** the site dependency check fails and names both resolutions

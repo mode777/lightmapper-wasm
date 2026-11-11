@@ -84,15 +84,13 @@ separate asset, and its documentation SHALL NOT claim a `.wasm` asset for it.
 - **WHEN** the README or `WASM_SETUP.md` describes the published entries
 - **THEN** each entry's artifact layout is described accurately
 
-### Requirement: Private studio package is not published
+### Requirement: Published package contains no studio or site files
 
-The repository SHALL keep the private `studio/` package out of the
-`lightmapper-wasm` tarball, exports and runtime dependency graph. The root
-`files` list and `exports` map SHALL NOT expose studio source or entries.
+The `lightmapper-wasm` tarball, exports and runtime dependency graph SHALL contain no studio code, showcase files or studio dependencies. The root `files` list and `exports` map SHALL expose only the published entries.
 
-#### Scenario: Tarball excludes studio
+#### Scenario: Tarball excludes studio and site
 - **WHEN** `npm pack` runs
-- **THEN** the tarball contains no `studio/` files, studio dependencies or studio entry points
+- **THEN** the tarball contains no `studio/` or `site/` files, studio dependencies or studio entry points
 
 #### Scenario: Root exports unchanged
 - **WHEN** the root `package.json` exports map is inspected
