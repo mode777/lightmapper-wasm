@@ -149,12 +149,12 @@ loaded, or when a bake context cannot be created.
 
 ### Requirement: Package-shaped module
 
-The harness SHALL be written so it can be promoted to the package without
-changing its behavior: no site imports, no xatlas dependency, typed inputs and
+The harness SHALL live in the studio package and remain display-agnostic: no
+site imports, no three.js dependency, no xatlas dependency, typed inputs and
 outputs, and a disposable context lifecycle.
 
 #### Scenario: Promotion audit
-- **WHEN** the harness source is inspected before promotion
+- **WHEN** the harness source is inspected in the studio package
 - **THEN** it contains no import from `site/`, `three`, or `xatlas-wasm`
 
 #### Scenario: Disposal
