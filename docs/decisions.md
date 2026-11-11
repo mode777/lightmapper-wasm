@@ -34,6 +34,7 @@ implemented) · **Superseded** (replaced by a newer ADR).
 | AD-024 | Seed the lightmapper rotation jitter before each studio bake so repeated bakes are deterministic | Accepted |
 | AD-025 | The studio is published from its own `lightmap-studio` repository; the local copy is frozen until the consume stage | Accepted |
 | AD-026 | Studio releases are tag-gated, require the seeded `lightmapper-wasm` dependency floor and publish with provenance | Accepted |
+| AD-027 | The showcase consumes the published `lightmap-studio` package; the local staging copy is removed | Accepted |
 
 ---
 
@@ -384,6 +385,11 @@ before the repository split. The ADR log and roadmap must describe the staged
 state, not the withdrawn promotion. `site/` may keep sample-only display code,
 but it must not own the unwrap or bake implementation.
 
+**Status update (2026-11-11).** Stage 3 (`consume-lightmap-studio`) is complete:
+the local `studio/` copy is removed and the showcase installs
+`lightmap-studio@^0.1.0` from the npm registry. AD-027 records the dependency
+shape; this ADR is implemented, not superseded.
+
 ## AD-022 — Studio lighting is environment plus geometry {#ad-022}
 
 **Context.** The lightmapper has no punctual or directional light model: it
@@ -482,6 +488,11 @@ forked. The root `lightmapper-wasm` tarball, exports and dependency graph stay
 unchanged, and the root README/ADR log point at the standalone repository.
 AD-021 is implemented, not superseded.
 
+**Status update (2026-11-11).** Stage 3 (`consume-lightmap-studio`) closed the
+staging window: `studio/` is removed, `site/` installs
+`lightmap-studio@^0.1.0` from the registry, and the mirroring requirement no
+longer applies. AD-025 is implemented, not superseded.
+
 ## AD-026 — Studio releases are tag-gated and declare a dependency floor {#ad-026}
 
 **Context.** The studio is the first package in this program whose published
@@ -505,3 +516,28 @@ instead of silently degrading the bake. First-publish ownership can be claimed
 with a `0.0.0-bootstrap.0` placeholder on the `bootstrap` tag; `0.1.0` becomes
 `latest` when the real release lands. Consumers get two emitted wasm assets and
 no parent checkout, Emscripten or local link requirement.
+
+## AD-027 — The showcase consumes the published studio package {#ad-027}
+
+**Context.** AD-021 and AD-025 planned three stages: isolate the studio, extract
+and publish it, then remove the local copy and consume the registry package.
+Stages 1 and 2 left a frozen `studio/` mirror in this repository and a
+`lightmap-studio: file:../studio` link in `site/`, so two copies had to be kept
+in sync by hand and CI built the staging copy instead of the published artifact.
+
+**Decision.** Complete stage 3. Remove `studio/` and the root scripts that build
+or test it, and make `site/` depend on `lightmap-studio@^0.1.0` from the npm
+registry. The showcase keeps `lightmapper-wasm: file:..` so the site still
+builds against the tested local `dist` artifact (AD-015); an npm override pins
+the published studio's `lightmapper-wasm` requirement to that local link so the
+site resolves exactly one wrapper copy. A site test fails when the studio
+resolves from a local path, leaves `^0.1.0`, or a second wrapper copy appears.
+Studio build, unit, consumer and headless gates stay in the standalone
+repository (AD-026); this repository keeps the site harness, smoke and
+production-build coverage of the installed package.
+
+**Consequences.** The studio has one source of truth and independent releases;
+a studio fix arrives here as a version bump. The root tarball, exports and
+dependency graph are unchanged, CI no longer builds a studio package, and the
+showcase build still emits one hashed `lightmapper.wasm` and `xatlas.wasm`.
+AD-021's stage 3 and AD-025's handoff are complete; neither is superseded.

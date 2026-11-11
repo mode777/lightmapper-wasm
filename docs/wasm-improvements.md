@@ -98,9 +98,10 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   accepts checked-in HDRIs and generated procedural skies, a display-agnostic
   raw-WebGL bake harness, a three.js display layer, checked-in thumbnails and a
   `Main`-only Pages deployment. The reusable unwrap/bake pipeline is published
-  as the standalone `lightmap-studio` package (AD-025/AD-026); `site/` still
-  consumes the frozen local `studio/` copy until the consume stage, and the
-  three.js display stays a site-local sample consumer.
+  as the standalone `lightmap-studio` package (AD-025/AD-026) and the site
+  installs `lightmap-studio@^0.1.0` from the npm registry (AD-027); there is no
+  local studio copy, and the three.js display stays a site-local sample
+  consumer.
 
 ### 3.2 What is missing or wrong
 
@@ -442,14 +443,15 @@ are the intended kebab-case change names.
 | 13 | `improve-outdoor-sun-lighting` (AD-020) | this repo | 10–12 | Implemented (cosine weights + well-sampled bake sun) | Replace multi-lobed outdoor sun sampling with a soft area-light response |
 | 14 | `isolate-lightmap-studio` (AD-021/022/023/024) | this repo | 10–13 | Implemented (private studio + site consumer) | Private `studio/` package, engine-agnostic API, site consumes it |
 | 15 | `bootstrap-lightmap-studio` (AD-025/AD-026) | new `lightmap-studio` repo | 14 | Implemented (`lightmap-studio@0.1.0`) | Standalone package with build, types, loader, docs, tests and npm publish |
-| 16 | `consume-lightmap-studio` | this repo | 15 | Planned | Remove the local studio and consume the npm package from the site |
+| 16 | `consume-lightmap-studio` (AD-027) | this repo | 15 | Implemented (`lightmap-studio@^0.1.0` from npm) | Remove the local studio and consume the npm package from the site |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
 fix. Changes 4 and 5 are implemented here; changes 6–8 remain proposed. Change
 9 spans both and is the final documentation/release gate. Changes 10–13 are the
-implemented showcase sequence. Changes 14–15 are implemented; change 16 is the
-remaining consume stage.
+implemented showcase sequence. Changes 14–16 are implemented; the studio now
+lives only in `mode777/lightmap-studio`, and change 16 is the consume stage that
+removed the local copy.
 
 ---
 
@@ -945,12 +947,12 @@ AD-018/AD-019 are withdrawn by AD-021; the studio owns the harness and three.js 
 ### 7.14 `isolate-lightmap-studio` — this repo (implemented)
 
 **Status:** Implemented. The reusable unwrap/bake pipeline was isolated as a
-private `lightmap-studio` package under `studio/`; the site consumes it with
+private `lightmap-studio` package under `studio/`; the site consumed it with
 `lightmap-studio: file:../studio`. The root package, its entries, its tarball
 and its zero-dependency graph are unchanged. Stage 2
 (`bootstrap-lightmap-studio`) is implemented as the published
-`lightmap-studio@0.1.0` package; stage 3 (`consume-lightmap-studio`) remains
-planned.
+`lightmap-studio@0.1.0` package, and stage 3 (`consume-lightmap-studio`) removed
+the local copy and switched the site to the registry package (AD-027).
 
 **Goal:** isolate the engine-agnostic studio from the demo scenes so it can be
 extracted to its own repository without rewriting the pipeline.
@@ -974,8 +976,9 @@ bump, no npm publish and no three.js dependency in the studio.
 - Studio unit, consumer, headless and root-pack tests run in CI and in
   `npm run verify:remote`.
 
-**Verification:** `npm run build:studio`, `npm run typecheck --prefix studio`,
-`npm test --prefix studio`, `npm run test:consumer --prefix studio`,
+**Verification:** the stage-1 commands were `npm run build:studio`,
+`npm run typecheck --prefix studio`, `npm test --prefix studio`,
+`npm run test:consumer --prefix studio`,
 `npm run test:headless --prefix studio` with headless Chrome,
 `npm test --prefix site`, `npm run check --prefix site`,
 `npm run test:harness --prefix site`, `npm run test:smoke --prefix site`,
@@ -996,8 +999,9 @@ decision.
 
 **Status:** Implemented. `lightmap-studio@0.1.0` is published from
 `mode777/lightmap-studio` with npm provenance, and `lightmapper-wasm@0.2.0` is
-the published dependency floor. The site still uses the frozen local `studio/`
-copy; the consume stage remains planned.
+the published dependency floor. The site installed the frozen local `studio/`
+copy until stage 3 (`consume-lightmap-studio`) removed it and switched to the
+registry package (AD-027).
 
 **Goal:** extract the stage-1 studio into a standalone, independently versioned
 and published package without changing its API or the showcase.
@@ -1030,6 +1034,43 @@ the parent `npm run verify:remote` pipeline.
 **ADR footprint:** adds AD-025 (standalone repository and publication) and
 AD-026 (tag-gated release and dependency floor); implements AD-021 stage 2 and
 consumes AD-024. No accepted ADR is superseded.
+
+### 7.16 `consume-lightmap-studio` — this repo (implemented)
+
+**Status:** Implemented (AD-027). The local `studio/` package, its lockfile and
+the root `build:studio`/`test:studio` scripts are removed. `site/` installs
+`lightmap-studio@^0.1.0` from the npm registry, keeps
+`lightmapper-wasm: file:..` for the tested local `dist` artifact, and pins the
+published studio's wrapper requirement to that link with an npm override. A new
+site test fails when the studio resolves locally, leaves `^0.1.0`, or a second
+`lightmapper-wasm` copy appears. CI and `verify:remote` no longer build or test
+a studio package; the site harness, smoke and production-build checks exercise
+the installed package. The published `dist/index.js` and `dist/index.d.ts` were
+byte-identical to the removed local build, so no scene, thumbnail or
+`PREVIEW_VERSION` changed.
+
+**Goal:** remove the duplicated staging copy and make the published studio the
+only studio the showcase consumes.
+
+**Scope:** `site/package.json`, `site/package-lock.json`,
+`site/vite.config.ts` (comment), new `site/test/studio-dependency.test.ts`,
+deletion of `studio/`, root scripts, `test/pack-boundary.test.mjs`,
+`.gitignore`, `.github/workflows/publish.yml`, `scripts/verify-remote.sh`,
+`AGENTS.md`, `README.md`, `WASM_SETUP.md`, `site/README.md`,
+`openspec/config.yaml`, `docs/decisions.md` and this roadmap. No C, wasm build,
+loader or studio-repository change.
+
+**Acceptance:** the site resolves one registry studio and one local wrapper; the
+root tarball still excludes studio and site files; the root and site suites pass
+against the installed package; and no document describes `file:../studio` or a
+frozen local copy.
+
+**Verification:** root and site suites, the headless bake/shader/readback
+probes, the site harness/smoke/build check and `npm run verify:remote`.
+
+**ADR footprint:** adds AD-027; implements AD-021 stage 3 and completes AD-025's
+handoff. No accepted ADR is superseded.
+
 ---
 
 ## 8. Non-goals
@@ -1084,8 +1125,9 @@ generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog.
 Change 13, `improve-outdoor-sun-lighting`, is implemented with the cosine
 weight shim, well-sampled bake sun, per-scene outdoor smoothing, 1024²
 environment atlases and sampling budget. `bootstrap-lightmap-studio` is
-implemented with the standalone `lightmap-studio@0.1.0` package; the next
-planned change is `consume-lightmap-studio`; `worker-support` remains an
+implemented with the standalone `lightmap-studio@0.1.0` package, and
+`consume-lightmap-studio` removed the local copy and switched the site to
+`lightmap-studio@^0.1.0` from the registry; `worker-support` remains an
 independent open item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a

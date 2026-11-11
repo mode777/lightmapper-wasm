@@ -226,7 +226,7 @@ sky HDRI) and `sun-sky-outdoor` (non-HDRI outdoor lighting from a generated
 procedural sky and directional sun disk). The outdoor scenes use cosine
 hemisphere weighting and a well-sampled bake-only sun lobe; the resulting
 shadows are soft area-light shadows, not a crisp parallel sun. Every scenario
-consumes the private `lightmap-studio` package: it unwraps its lit meshes
+consumes the published `lightmap-studio` package: it unwraps its lit meshes
 through xatlas, bakes with the studio harness and displays the result with
 three.js. The gallery credits the underlying
 [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and
@@ -244,12 +244,13 @@ SITE_BASE=/lightmapper-wasm/ npm run build --prefix site
 SITE_BASE=/lightmapper-wasm/ npm run build:check --prefix site
 ```
 
-The build workflow uploads the tested `dist` artifact, builds the private
-studio package, and the `site` job installs and tests the showcase from those
-artifacts. The `deploy` job publishes only on `Main` pushes or manual dispatch. The repository's Pages source must be set
+The build workflow uploads the tested `dist` artifact, and the `site` job
+installs the showcase with `lightmap-studio` from the npm registry and
+`lightmapper-wasm` from the local `file:..` link, then runs the site checks. The
+`deploy` job publishes only on `Main` pushes or manual dispatch. The repository's Pages source must be set
 to **GitHub Actions**; the workflow uses `actions/configure-pages`,
-`actions/upload-pages-artifact` and `actions/deploy-pages`. Wasm is never rebuilt in the site job; the studio is built from the checkout
-and `lightmapper-wasm` is never installed from the npm registry there.
+`actions/upload-pages-artifact` and `actions/deploy-pages`. Wasm is never rebuilt in the site job, `lightmapper-wasm` is never installed from the npm registry there,
+and no studio package is built from this checkout (AD-027).
 
 `?preview=1` hides the page chrome and fixes the stage to 16:10 for thumbnail
 capture; `?fail=webgl2|float|lightmapper|xatlas|hdri` exercises the capability

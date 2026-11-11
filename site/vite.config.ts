@@ -11,6 +11,8 @@ export default defineConfig({
   // The package entries resolve their wasm assets with
   // `new URL(..., import.meta.url)`. Keeping them out of the dependency
   // optimizer leaves that expression intact so Vite emits the assets.
+  // `lightmap-studio` is a registry dependency; `lightmapper-wasm` is still the
+  // local `file:..` link to the tested dist artifact.
   optimizeDeps: {
     exclude: ["lightmap-studio", "lightmapper-wasm", "xatlas-wasm"]
   },

@@ -75,9 +75,7 @@
     "test:loader": "node test/loader-asset.mjs",
     "test:consumer": "node test/consumer-vite.mjs",
     "typecheck": "tsc --noEmit",
-    "build:studio": "npm run build:dist && npm run build --prefix studio",
-    "test:pack": "node test/studio-pack.test.mjs",
-    "test:studio": "npm run build --prefix studio && npm test --prefix studio && npm run test:consumer --prefix studio && npm run test:headless --prefix studio"
+    "test:pack": "node test/pack-boundary.test.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^24.43.1",

@@ -60,8 +60,9 @@ workflow unless the user explicitly asks for one.
 - `site/README.md` — the showcase consumer, scene/atlas contract, studio and
   display boundaries, thumbnails and deployment.
 - `studio/README.md` — the standalone `lightmap-studio` package API, lighting
-  model, presets and loader contract; the local `studio/` copy is a frozen
-  staging mirror until the consume stage.
+  model, presets and loader contract. The studio lives in
+  `mode777/lightmap-studio` and is installed from the npm registry as
+  `lightmap-studio@^0.1.0`; this repository has no local studio copy.
 
 ## Verification before push
 

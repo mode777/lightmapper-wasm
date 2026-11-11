@@ -30,9 +30,10 @@ context: |
   scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
   `hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and a three.js display
   layer. The reusable unwrap/bake pipeline is published as the standalone
-  `lightmap-studio` package (AD-025/AD-026); the site still consumes the frozen
-  local `studio/` copy with `lightmap-studio: file:../studio` until the consume
-  stage. The studio supports an optional
+  `lightmap-studio` package (AD-025/AD-026) and the site installs
+  `lightmap-studio@^0.1.0` from the npm registry (AD-027); the repository has
+  no local studio copy, and the site keeps `lightmapper-wasm: file:..` as its
+  only wrapper copy. The studio supports an optional
   linear equirectangular environment that is drawn as the bake skybox and
   used as the display background (AD-017), plus uniform or cosine hemisphere
   weighting (AD-020). The outdoor scenes use a
@@ -59,10 +60,10 @@ context: |
   Remaining defects and gaps are catalogued in `docs/wasm-improvements.md`;
   the major packaging, build and sampling issues are fixed. Still open:
   handwritten TypeScript declarations (generated declarations/ABI checks are
-  proposed), worker support, broader capability-failure coverage, and switching
-  the site to the published studio (stage 3). The site currently consumes
-  the separate-asset default entry; do not describe the old SINGLE_FILE-only
-  layout as current.
+  proposed), worker support and broader capability-failure coverage. The site
+  consumes the separate-asset default entry and installs the published studio
+  from npm; do not describe the old SINGLE_FILE-only layout or a local studio
+  copy as current.
 
   Constraints: keep the package ESM-only and browser-first; do not add a
   runtime dependency; keep the public low-level C-shaped API and the
@@ -116,15 +117,16 @@ operations:
         assets. Run `npm run build:check --prefix site` after packaging work.
       - Keep the WebGL2 capability probe and strict context binding intact
         unless the proposal explicitly covers them.
-      - Build the frozen local `studio/` staging copy after the root `dist` and
-        before the site install; the site consumes it from the local
-        `file:../studio` link. The canonical package is published from
-        `mode777/lightmap-studio`; keep the studio free of three.js and keep the
-        root tarball free of the studio package.
+      - The studio is a registry dependency — install `lightmap-studio@^0.1.0`
+        from npm and keep the site's local `lightmapper-wasm` link (`file:..`)
+        as the only wrapper copy (the npm override pins it). Do not add a local
+        studio copy or a `file:` studio spec; the studio's build, tests and
+        releases live in `mode777/lightmap-studio`. Keep the root tarball free
+        of studio and site files.
       - Keep the showcase a consumer of the tested `dist` artifact; do not
         rebuild wasm in the site job, do not install `lightmapper-wasm` from
         the registry, and keep site dependencies confined to `site/` plus the
-        local studio link.
+        local wrapper link.
       - Keep the harness display-agnostic and the display bake-free. Scene
         source changes require recapturing checked-in thumbnails; preview
         viewport/lighting/material/CSS changes require a `PREVIEW_VERSION`

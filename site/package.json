@@ -21,7 +21,12 @@
     "highlight.js": "^11.12.0",
     "lightmapper-wasm": "file:..",
     "three": "0.187.0",
-    "lightmap-studio": "file:../studio"
+    "lightmap-studio": "^0.1.0"
+  },
+  "overrides": {
+    "lightmap-studio": {
+      "lightmapper-wasm": "$lightmapper-wasm"
+    }
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

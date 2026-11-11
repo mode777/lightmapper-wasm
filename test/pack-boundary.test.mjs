@@ -1,6 +1,7 @@
-// Root package must not leak the private studio package or its dependencies.
+// Root package boundary: the published tarball must not leak the showcase or
+// the studio package, and the root package keeps no runtime dependencies.
 //
-//   node test/studio-pack.test.mjs
+//   node test/pack-boundary.test.mjs
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -46,12 +47,12 @@ check("root package has no runtime dependencies", () => {
   assert.equal(pkg.peerDependencies, undefined);
 });
 
-check("tarball excludes the private studio package", () => {
-  assert.equal(paths.includes("studio/"), false);
+check("tarball excludes the studio package and showcase", () => {
   assert.equal(files.some((file) => file.startsWith("studio/")), false);
+  assert.equal(files.some((file) => file.startsWith("site/")), false);
 });
 
-check("tarball excludes studio dependencies and entries", () => {
+check("tarball excludes studio and showcase dependencies", () => {
   assert.equal(paths.includes("xatlas-wasm"), false);
   assert.equal(paths.includes("lightmap-studio"), false);
   assert.equal(files.some((file) => file.includes("studio")), false);

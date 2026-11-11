@@ -98,18 +98,24 @@ The configure and build scripts run `npm run check:emsdk` first and reject an
 
 ### Studio package
 
-The private `lightmap-studio` package under `studio/` consumes the built root
-`dist/` and the registry `xatlas-wasm` package. Build it after the root
-artifact:
+The `lightmap-studio` package is published from `mode777/lightmap-studio` and
+installed from the npm registry; this repository no longer contains a studio
+copy. The showcase declares `lightmap-studio: ^0.1.0` and keeps
+`lightmapper-wasm: file:..`, so it always builds against the root `dist/`
+artifact produced above. An npm override pins the published studio's
+`lightmapper-wasm` requirement to that local link, and
+`site/test/studio-dependency.test.ts` fails if the studio resolves locally or a
+second wrapper copy appears:
 
 ```sh
-npm run build:studio
-# equivalent to: npm run build:dist && npm run build --prefix studio
+npm ci --prefix site      # installs lightmap-studio from npm + the local wrapper
+npm test --prefix site    # includes the studio dependency test
 ```
 
-`studio/dist/index.js` and `studio/dist/index.d.ts` are the package entry. The
-showcase links the package with `lightmap-studio: file:../studio`; it is not
-published by `lightmapper-wasm` and is excluded from the root tarball.
+Studio source, tests and releases live in
+[`mode777/lightmap-studio`](https://github.com/mode777/lightmap-studio); the
+package is not published by `lightmapper-wasm`, and the root tarball excludes
+studio and site files.
 
 ## What the build emits
 
