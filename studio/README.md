@@ -4,11 +4,12 @@ Engine-agnostic unwrapping and lightmap baking for the web, built on
 [`xatlas-wasm`](https://github.com/mode777/xatlas-wasm) and
 [`lightmapper-wasm`](https://github.com/mode777/lightmapper-wasm).
 
-> **Status: private stage 1.** This package lives under `studio/` in the
-> `lightmapper-wasm` repository while the API is proven by the showcase. It is
-> not published from this repository. Stage 2 extracts it to its own
-> `lightmap-studio` repository and npm package; stage 3 removes the local copy
-> and consumes the published package from the samples.
+> **Status: staging mirror.** The canonical package is published from
+> [`mode777/lightmap-studio`](https://github.com/mode777/lightmap-studio) as
+> `lightmap-studio@0.1.0`. This `studio/` copy is frozen inside
+> `lightmapper-wasm` for the showcase until the consume stage; do not add
+> feature work here. Stage 3 removes the copy and switches the site to the
+> registry package.
 
 The studio owns the mesh-to-lightmap path: one shared xatlas atlas, a WebGL2
 lightmapper bake, optional environment prefiltering, quality presets and a
@@ -17,8 +18,9 @@ objects.
 
 ## Build
 
-The private package consumes the repository's built `dist/` and the registry
-`xatlas-wasm` package:
+The canonical package builds in its own repository with `npm ci && npm run
+build`. This staging copy links the parent checkout with
+`lightmapper-wasm: file:..` and the registry `xatlas-wasm` package:
 
 ```sh
 npm run build:studio        # from the repository root
@@ -210,5 +212,6 @@ repeat bakes, abort, busy rejection, float preflight and disposal.
 ## Verification
 
 The root `npm run verify:remote` pipeline builds the wasm, assembles `dist`,
-runs the studio checks and then runs the showcase checks. The studio is not a
-published artifact in this stage.
+runs the studio checks and then runs the showcase checks. The canonical package
+is published as `lightmap-studio@0.1.0`; this staging copy is verified by the
+parent pipeline until stage 3 switches the site to the registry package.

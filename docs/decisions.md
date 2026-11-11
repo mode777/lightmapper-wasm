@@ -32,6 +32,8 @@ implemented) · **Superseded** (replaced by a newer ADR).
 | AD-022 | Studio lighting is environment plus emissive geometry plus point-light sphere proxies; no directional-light input | Accepted |
 | AD-023 | The studio loader lazily loads two wasm binaries through one option surface with preflight and typed errors | Accepted |
 | AD-024 | Seed the lightmapper rotation jitter before each studio bake so repeated bakes are deterministic | Accepted |
+| AD-025 | The studio is published from its own `lightmap-studio` repository; the local copy is frozen until the consume stage | Accepted |
+| AD-026 | Studio releases are tag-gated, require the seeded `lightmapper-wasm` dependency floor and publish with provenance | Accepted |
 
 ---
 
@@ -453,3 +455,53 @@ bakes of the same scene and options produce the same atlas and lightmap
 values, which the studio headless suite asserts. A caller that wants a
 different jitter sequence can still call `lmSeed` with another seed before a
 bake.
+
+## AD-025 — The studio is published from its own repository {#ad-025}
+
+**Context.** Stage 1 (AD-021) left the studio as a private package under
+`studio/` with a `file:..` dependency, parent-relative test paths and no
+published artifact. The showcase therefore consumed a local link, and no
+external consumer could install the pipeline.
+
+**Decision.** Extract the package to the public `mode777/lightmap-studio`
+repository with a history-preserving `studio/` subtree split, publish it as the
+unscoped npm package `lightmap-studio`, and give the repository its own build,
+test and release workflow. The package is ESM-only, keeps the API and loader
+contracts from `lightmap-studio`/`studio-loader`, depends directly on
+`lightmapper-wasm` and `xatlas-wasm`, and does not depend on three.js. The
+parent repository keeps its `studio/` copy frozen for the showcase until stage
+3 (`consume-lightmap-studio`), which removes the copy and switches the site to
+the registry package. The functional initial release is `0.1.0`; a
+`0.0.0-bootstrap.0` placeholder may claim the registry name on the `bootstrap`
+tag without becoming the latest functional release.
+
+**Consequences.** The studio now has independent versions, CI and release
+notes. `site/` still uses `file:../studio` during the staging window, so
+urgent fixes must be mirrored mechanically between the two copies rather than
+forked. The root `lightmapper-wasm` tarball, exports and dependency graph stay
+unchanged, and the root README/ADR log point at the standalone repository.
+AD-021 is implemented, not superseded.
+
+## AD-026 — Studio releases are tag-gated and declare a dependency floor {#ad-026}
+
+**Context.** The studio is the first package in this program whose published
+artifact depends on the seeded `lightmapper-wasm` wrapper. A release that
+resolved an older lightmapper version would silently skip the rotation-seed
+reset and break deterministic bakes.
+
+**Decision.** Publish only from a `v<version>` tag in
+`mode777/lightmap-studio`, and fail the release when the tag and
+`package.json` version differ. The release workflow runs the build, typecheck,
+unit, packed-consumer, tarball-layout and headless bake gates before
+`npm publish --provenance --access public`. Trusted publishing through GitHub
+OIDC is the default; an `NPM_TOKEN` secret is the fallback when the registry
+account requires a token. The package declares
+`lightmapper-wasm@^0.2.0` (the first release with `lmSeed` and the `_srand`
+export) and `xatlas-wasm@^0.2.0` as direct dependencies; the loader test fails
+when the installed lightmapper predates that floor.
+
+**Consequences.** A broken or downgraded dependency fails the publish gate
+instead of silently degrading the bake. First-publish ownership can be claimed
+with a `0.0.0-bootstrap.0` placeholder on the `bootstrap` tag; `0.1.0` becomes
+`latest` when the real release lands. Consumers get two emitted wasm assets and
+no parent checkout, Emscripten or local link requirement.

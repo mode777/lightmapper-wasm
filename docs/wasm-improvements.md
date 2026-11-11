@@ -1,7 +1,7 @@
 # WASM port improvements — findings and OpenSpec roadmap
 
 **Status:** planning baseline
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-11
 **Sources:** `mode777/lightmapper` @ `72b69e9` (“add WASM support”),
 `mode777/lightmapper-wasm` @ `f0fa005`, `mode777/libfive-wasm` @ `d59d540`
 **Audience:** maintainers creating OpenSpec changes from this roadmap.
@@ -43,7 +43,7 @@ state ownership per task.
 | `mode777/lightmapper-wasm` (this repo) | Emscripten CMake target, C shim, npm wrapper, loader, browser demo, package tests, publish workflow, baseline specs, ADRs and this roadmap | the C header’s internal rendering logic |
 | `mode777/lightmapper` | `lightmapper.h`, the desktop example, the reference GLES3/WebGL2 path and the upstream C verification | npm packaging, Emscripten CMake build, JS loader, browser demo, release workflow |
 | `mode777/libfive-wasm` | reference implementation for process, loader, packaging, tests and docs | not a dependency of lightmapper |
-| `mode777/lightmap-studio` (new, stage 2) | engine-agnostic studio API, unwrap/bake orchestration, environment prefilter, presets, loader, package docs and its samples | low-level lightmapper/xatlas implementations, the C header and the three.js display |
+| `mode777/lightmap-studio` (published) | engine-agnostic studio API, unwrap/bake orchestration, environment prefilter, presets, loader, package docs, tests and its samples | low-level lightmapper/xatlas implementations, the C header and the three.js display |
 
 This repo consumes the C library as the `thirdparty/lightmapper` submodule. A
 C-side change lands upstream first; this repo then bumps the submodule pointer
@@ -97,9 +97,10 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   an environment path for the bake skybox and display background (AD-017) that
   accepts checked-in HDRIs and generated procedural skies, a display-agnostic
   raw-WebGL bake harness, a three.js display layer, checked-in thumbnails and a
-  `Main`-only Pages deployment. The reusable unwrap/bake pipeline is isolated as the private
-  `lightmap-studio` package under `studio/` (AD-021); the three.js display stays
-  a site-local sample consumer.
+  `Main`-only Pages deployment. The reusable unwrap/bake pipeline is published
+  as the standalone `lightmap-studio` package (AD-025/AD-026); `site/` still
+  consumes the frozen local `studio/` copy until the consume stage, and the
+  three.js display stays a site-local sample consumer.
 
 ### 3.2 What is missing or wrong
 
@@ -440,14 +441,15 @@ are the intended kebab-case change names.
 | 12 | `add-sun-sky-outdoor-lighting` | this repo | 10, 11 | Implemented (procedural sky + sun disk) | Non-HDRI outdoor scenario with a directional sun and generated sky |
 | 13 | `improve-outdoor-sun-lighting` (AD-020) | this repo | 10–12 | Implemented (cosine weights + well-sampled bake sun) | Replace multi-lobed outdoor sun sampling with a soft area-light response |
 | 14 | `isolate-lightmap-studio` (AD-021/022/023/024) | this repo | 10–13 | Implemented (private studio + site consumer) | Private `studio/` package, engine-agnostic API, site consumes it |
-| 15 | `bootstrap-lightmap-studio` | new `lightmap-studio` repo | 14 | Planned | Standalone package with build, types, loader, docs, tests and npm publish |
+| 15 | `bootstrap-lightmap-studio` (AD-025/AD-026) | new `lightmap-studio` repo | 14 | Implemented (`lightmap-studio@0.1.0`) | Standalone package with build, types, loader, docs, tests and npm publish |
 | 16 | `consume-lightmap-studio` | this repo | 15 | Planned | Remove the local studio and consume the npm package from the site |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
 fix. Changes 4 and 5 are implemented here; changes 6–8 remain proposed. Change
 9 spans both and is the final documentation/release gate. Changes 10–13 are the
-implemented showcase sequence; changes 14–16 are the staged studio sequence.
+implemented showcase sequence. Changes 14–15 are implemented; change 16 is the
+remaining consume stage.
 
 ---
 
@@ -942,11 +944,12 @@ AD-018/AD-019 are withdrawn by AD-021; the studio owns the harness and three.js 
 
 ### 7.14 `isolate-lightmap-studio` — this repo (implemented)
 
-**Status:** Implemented. The reusable unwrap/bake pipeline is a private
-`lightmap-studio` package under `studio/`; the site consumes it with
+**Status:** Implemented. The reusable unwrap/bake pipeline was isolated as a
+private `lightmap-studio` package under `studio/`; the site consumes it with
 `lightmap-studio: file:../studio`. The root package, its entries, its tarball
 and its zero-dependency graph are unchanged. Stage 2
-(`bootstrap-lightmap-studio`) and stage 3 (`consume-lightmap-studio`) remain
+(`bootstrap-lightmap-studio`) is implemented as the published
+`lightmap-studio@0.1.0` package; stage 3 (`consume-lightmap-studio`) remains
 planned.
 
 **Goal:** isolate the engine-agnostic studio from the demo scenes so it can be
@@ -965,7 +968,7 @@ bump, no npm publish and no three.js dependency in the studio.
   and point-light sphere proxies are implemented; there is no directional-light
   input.
 - The site contains no xatlas unwrap or lightmapper bake implementation and
-  consumes the private studio package.
+  consumes the local studio staging copy (the standalone package is published).
 - The root tarball excludes `studio/`, the root exports are unchanged and the
   root package has no runtime dependency.
 - Studio unit, consumer, headless and root-pack tests run in CI and in
@@ -982,12 +985,51 @@ bump, no npm publish and no three.js dependency in the studio.
 
 **Artifact delta:** exporting `_srand` grows the separate wasm from 44,136 to
 44,686 bytes and the glue from 32,031 to 32,247 bytes; the single-file embedded
-wasm is 44,665 bytes. The root golden bake and statistics are unchanged because
-the golden scene's first bake uses the seeded rotation.
+wasm is also 44,686 bytes. The root golden bake and statistics are unchanged
+because the golden scene's first bake uses the seeded rotation.
 
 **ADR footprint:** adds AD-021, AD-022, AD-023 and AD-024; withdraws the
 AD-018/AD-019 promotion reservation without changing any accepted C or package
 decision.
+
+### 7.15 `bootstrap-lightmap-studio` — new `lightmap-studio` repo (implemented)
+
+**Status:** Implemented. `lightmap-studio@0.1.0` is published from
+`mode777/lightmap-studio` with npm provenance, and `lightmapper-wasm@0.2.0` is
+the published dependency floor. The site still uses the frozen local `studio/`
+copy; the consume stage remains planned.
+
+**Goal:** extract the stage-1 studio into a standalone, independently versioned
+and published package without changing its API or the showcase.
+
+**Scope:** new `lightmap-studio` repository, public `0.1.0` package metadata,
+registry dependencies, checkout-independent tests, packed-tarball consumer,
+tarball layout guard, CI and tag-gated release, published README, ADR log and
+this roadmap. No `lightmapper.h` change, no submodule bump and no three.js
+dependency in the studio.
+
+**Acceptance:**
+- The package installs from npm, emits both `lightmapper.wasm` and
+  `xatlas.wasm` through a bundler, and needs no parent checkout or Emscripten.
+- The registry consumer unwraps and bakes in headless Chrome; repeated bakes of
+  the deterministic scene produce identical atlas metadata and lightmap values.
+- The tag-driven release publishes only after the build, unit, packed-consumer,
+  tarball and headless gates, with the tag matching `package.json`.
+- The local `studio/` copy stays functionally frozen for the showcase and the
+  root tarball still excludes it.
+
+**Verification:** `npm ci`, `npm run build`, `npm run typecheck`, `npm test`,
+`npm run test:consumer`, `npm run test:pack` and `npm run test:headless` in
+`mode777/lightmap-studio`; a clean registry install of `lightmap-studio@0.1.0`;
+the parent `npm run verify:remote` pipeline.
+
+**Artifact delta:** the separate `lightmapper-wasm` wasm is 44,686 bytes with
+32,247 bytes of glue; the studio tarball is 67 files and the published
+`lightmap-studio@0.1.0` tarball is 46.6 kB packed / 213.0 kB unpacked.
+
+**ADR footprint:** adds AD-025 (standalone repository and publication) and
+AD-026 (tag-gated release and dependency floor); implements AD-021 stage 2 and
+consumes AD-024. No accepted ADR is superseded.
 ---
 
 ## 8. Non-goals
@@ -1041,8 +1083,10 @@ Haven assets and the attribution/navigation copy. Change 12,
 generator, the `sun-sky-outdoor` scenario and the seven-scenario catalog.
 Change 13, `improve-outdoor-sun-lighting`, is implemented with the cosine
 weight shim, well-sampled bake sun, per-scene outdoor smoothing, 1024²
-environment atlases and sampling budget. The next planned changes are `bootstrap-lightmap-studio` and
-`consume-lightmap-studio`; `worker-support` remains an independent open item.
+environment atlases and sampling budget. `bootstrap-lightmap-studio` is
+implemented with the standalone `lightmap-studio@0.1.0` package; the next
+planned change is `consume-lightmap-studio`; `worker-support` remains an
+independent open item.
 
 For upstream C changes, propose them in `lightmapper` (or carry a
 `[lightmapper]` task here) and mirror the status in this roadmap. This repo’s

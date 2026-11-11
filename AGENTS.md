@@ -59,8 +59,9 @@ workflow unless the user explicitly asks for one.
   this package.
 - `site/README.md` — the showcase consumer, scene/atlas contract, studio and
   display boundaries, thumbnails and deployment.
-- `studio/README.md` — the private `lightmap-studio` package API, lighting
-  model, presets and loader contract.
+- `studio/README.md` — the standalone `lightmap-studio` package API, lighting
+  model, presets and loader contract; the local `studio/` copy is a frozen
+  staging mirror until the consume stage.
 
 ## Verification before push
 

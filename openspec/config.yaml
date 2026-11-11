@@ -29,18 +29,20 @@ context: |
   the npm tarball and adds no runtime dependency. It has seven procedural
   scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
   `hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and a three.js display
-  layer. The reusable unwrap/bake pipeline lives in the private
-  `lightmap-studio` package under `studio/` (AD-021), which the site consumes
-  with `lightmap-studio: file:../studio`. The studio supports an optional
+  layer. The reusable unwrap/bake pipeline is published as the standalone
+  `lightmap-studio` package (AD-025/AD-026); the site still consumes the frozen
+  local `studio/` copy with `lightmap-studio: file:../studio` until the consume
+  stage. The studio supports an optional
   linear equirectangular environment that is drawn as the bake skybox and
   used as the display background (AD-017), plus uniform or cosine hemisphere
   weighting (AD-020). The outdoor scenes use a
   larger, softer bake-only sun and a six-texel sampling budget; `hdri-studio`
   and `hdri-outdoor` use checked-in CC0 Poly Haven assets, while
   `sun-sky-outdoor` generates a procedural gradient and sun disk at runtime
-  with no asset request. The studio is staged for extraction to its own
-  repository and npm package; the AD-018/AD-019 package-entry promotion is
-  withdrawn (AD-021). The three.js display stays sample-local and is not part
+  with no asset request. The studio is published from
+  `mode777/lightmap-studio` as `lightmap-studio@0.1.0`; the AD-018/AD-019
+  package-entry promotion is withdrawn (AD-021). The three.js display stays
+  sample-local and is not part
   of the studio. Every lit mesh uses one xatlas atlas with a `[0,1)` UV clamp
   (AD-016). The build workflow
   uploads the tested `dist` artifact, the `site` job builds and tests from it
@@ -57,8 +59,8 @@ context: |
   Remaining defects and gaps are catalogued in `docs/wasm-improvements.md`;
   the major packaging, build and sampling issues are fixed. Still open:
   handwritten TypeScript declarations (generated declarations/ABI checks are
-  proposed), worker support, broader capability-failure coverage, and extracting
-  the private studio into its own repository. The site currently consumes
+  proposed), worker support, broader capability-failure coverage, and switching
+  the site to the published studio (stage 3). The site currently consumes
   the separate-asset default entry; do not describe the old SINGLE_FILE-only
   layout as current.
 
@@ -114,9 +116,10 @@ operations:
         assets. Run `npm run build:check --prefix site` after packaging work.
       - Keep the WebGL2 capability probe and strict context binding intact
         unless the proposal explicitly covers them.
-      - Build the private `studio/` package after the root `dist` and before
-        the site install; the site consumes it from the local
-        `file:../studio` link. Keep the studio free of three.js and keep the
+      - Build the frozen local `studio/` staging copy after the root `dist` and
+        before the site install; the site consumes it from the local
+        `file:../studio` link. The canonical package is published from
+        `mode777/lightmap-studio`; keep the studio free of three.js and keep the
         root tarball free of the studio package.
       - Keep the showcase a consumer of the tested `dist` artifact; do not
         rebuild wasm in the site job, do not install `lightmapper-wasm` from

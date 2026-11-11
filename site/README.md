@@ -246,9 +246,10 @@ is involved.
 
 ## Harness and display boundaries
 
-The display-agnostic bake harness now lives in the private `lightmap-studio`
-package under `studio/src/bake/`. It owns a hidden WebGL2 context (or accepts a
-caller-provided one), compiles the bake shader, uploads per-object geometry,
+The display-agnostic bake harness now lives in the standalone
+`lightmap-studio` package, consumed from the frozen local `studio/` copy until
+the consume stage, under `studio/src/bake/`. It owns a hidden WebGL2 context
+(or accepts a caller-provided one), compiles the bake shader, uploads per-object geometry,
 runs the shared-atlas bounce loop, draws the full scene for every object,
 uploads the CPU atlas to the GPU once per bounce, and returns a `Float32Array`
 lightmap plus statistics. It imports only `lightmapper-wasm` and its own
@@ -287,10 +288,11 @@ equirectangular HDRI background texture, applies its intensity and disposes it
 with the display. Its import-boundary test rejects any runtime import from
 `lightmap-studio` and any `lmCreate`/`lmBegin`/`lmEnd` call.
 
-The unwrap and bake implementation lives in the private `lightmap-studio`
-package; the display and the demo scenes stay site-local consumers. The former
-`lightmapper-wasm/bake` and `lightmapper-wasm/three` promotion plan is withdrawn
-(AD-021).
+The unwrap and bake implementation lives in the standalone `lightmap-studio`
+package, currently linked from the frozen local `studio/` copy; the display and
+the demo scenes stay site-local consumers. Stage 3 switches the site to the
+registry package. The former `lightmapper-wasm/bake` and
+`lightmapper-wasm/three` promotion plan is withdrawn (AD-021).
 
 ## Views and capture mode
 
