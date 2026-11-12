@@ -22,10 +22,15 @@ const ASSETS = {
     md5: "d5d7eb9d26d341d6aa4d11c1a54fd97c",
     file: "studio_small_09_1k.hdr"
   },
-  kloofendal_48d_partly_cloudy: {
-    size: 1_637_206,
-    md5: "ee096fe9e26ce29d8f110b5ba0579011",
-    file: "kloofendal_48d_partly_cloudy_1k.hdr"
+  kloofendal_48d_partly_cloudy_puresky: {
+    size: 1_435_119,
+    md5: "c69498687e876bf68d2a8b8a62234eb9",
+    file: "kloofendal_48d_partly_cloudy_puresky_1k.hdr"
+  },
+  qwantani_dusk_2_puresky: {
+    size: 1_166_018,
+    md5: "d400530e33f683654e70b4a087b6fe8d",
+    file: "qwantani_dusk_2_puresky_1k.hdr"
   }
 };
 
@@ -123,7 +128,12 @@ if (unknown.length > 0 || (args.has("--check") && args.has("--force")) || (!args
   usage();
   process.exitCode = 2;
 } else if (args.has("--check")) {
-  check();
+  try {
+    check();
+  } catch (error) {
+    console.error(`[fetch-hdri] ${error.message}`);
+    process.exitCode = 2;
+  }
 } else {
   try {
     selectedAssets();

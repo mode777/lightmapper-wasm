@@ -43,6 +43,14 @@ describe("scenario catalog", () => {
     ]);
   });
 
+  it("covers the environment section with the three checked-in HDRI scenes", () => {
+    const environment = SCENARIOS.filter((scenario) =>
+      scenario.meta.sections.includes("environment")
+    ).map((scenario) => scenario.meta.id);
+    expect(environment).toEqual(["hdri-studio", "hdri-outdoor", "hdri-dusk"]);
+    expect(sectionCoverage(SCENARIOS).environment).toBe(3);
+  });
+
   it("has an exact raw source entry for every scenario", () => {
     for (const scenario of SCENARIOS) {
       const source = SCENE_SOURCES[scenario.meta.id];

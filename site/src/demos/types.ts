@@ -1,5 +1,4 @@
 import type { HemisphereWeight } from "lightmap-studio";
-import type { ProceduralSky, ProceduralSunVariant } from "../environment/sky";
 
 export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";
 
@@ -13,9 +12,7 @@ export interface HdrSceneEnvironment {
   intensity: number;
 }
 
-export type SceneEnvironment =
-  | HdrSceneEnvironment
-  | ({ kind: "sky" } & ProceduralSky);
+export type SceneEnvironment = HdrSceneEnvironment;
 
 export interface SceneCamera {
   position: Vec3;
@@ -35,8 +32,6 @@ export interface SceneMeta {
 }
 
 export interface EnvironmentBakeOptions {
-  /** Bake-only procedural sun override; the display keeps the scene's disk. */
-  sun?: ProceduralSunVariant;
   /** HDRI Gaussian radius in target texels for the prefiltered bake copy. */
   prefilterRadius?: number;
 }

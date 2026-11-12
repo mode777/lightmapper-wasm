@@ -26,9 +26,9 @@ context: |
 
   The public showcase lives under `site/` (AD-015): a private Vite + TypeScript
   consumer that links this checkout with `lightmapper-wasm: file:..`, is not in
-  the npm tarball and adds no runtime dependency. It has seven procedural
-  scenarios (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
-  `hdri-studio`, `hdri-outdoor`, `sun-sky-outdoor`) and a three.js display
+  the npm tarball and adds no runtime dependency. It has seven scenarios
+  (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
+  `hdri-studio`, `hdri-outdoor`, `hdri-dusk`) and a three.js display
   layer. The reusable unwrap/bake pipeline is published as the standalone
   `lightmap-studio` package (AD-025/AD-026) and the site installs
   `lightmap-studio@^0.1.0` from the npm registry (AD-027); the repository has
@@ -37,10 +37,10 @@ context: |
   linear equirectangular environment that is drawn as the bake skybox and
   used as the display background (AD-017), plus uniform or cosine hemisphere
   weighting (AD-020). The outdoor scenes use a
-  larger, softer bake-only sun and a six-texel sampling budget; `hdri-studio`
-  and `hdri-outdoor` use checked-in CC0 Poly Haven assets, while
-  `sun-sky-outdoor` generates a procedural gradient and sun disk at runtime
-  with no asset request. The studio is published from
+  larger, softer bake-only sun and a six-texel sampling budget; `hdri-studio`,
+  `hdri-outdoor` and `hdri-dusk` use checked-in CC0 Poly Haven HDRIs, with the
+  outdoor scenes on the Pure Sky variants and the dusk scene as soft blue-hour
+  fill (AD-028). The studio is published from
   `mode777/lightmap-studio` as `lightmap-studio@0.1.0`; the AD-018/AD-019
   package-entry promotion is withdrawn (AD-021). The three.js display stays
   sample-local and is not part

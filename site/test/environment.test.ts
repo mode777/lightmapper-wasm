@@ -17,7 +17,13 @@ const HDRI_PATH = fileURLToPath(
   new URL("../src/assets/environments/studio_small_09_1k.hdr", import.meta.url)
 );
 const OUTDOOR_HDRI_PATH = fileURLToPath(
-  new URL("../src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr", import.meta.url)
+  new URL(
+    "../src/assets/environments/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+    import.meta.url
+  )
+);
+const DUSK_HDRI_PATH = fileURLToPath(
+  new URL("../src/assets/environments/qwantani_dusk_2_puresky_1k.hdr", import.meta.url)
 );
 
 function environment(overrides: Partial<EnvironmentInput> = {}): EnvironmentInput {
@@ -108,8 +114,13 @@ describe("checked-in HDRIs", () => {
     { path: HDRI_PATH, size: 1_615_248, md5: "d5d7eb9d26d341d6aa4d11c1a54fd97c" },
     {
       path: OUTDOOR_HDRI_PATH,
-      size: 1_637_206,
-      md5: "ee096fe9e26ce29d8f110b5ba0579011"
+      size: 1_435_119,
+      md5: "c69498687e876bf68d2a8b8a62234eb9"
+    },
+    {
+      path: DUSK_HDRI_PATH,
+      size: 1_166_018,
+      md5: "d400530e33f683654e70b4a087b6fe8d"
     }
   ]) {
     it(`is the expected 1k Radiance file: ${asset.path.split("/").pop()}`, () => {

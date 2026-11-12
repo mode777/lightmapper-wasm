@@ -17,7 +17,6 @@ import {
 import { chartColor } from "./atlas/stats";
 import { QUALITY_PRESETS, isQuality, PREVIEW_VERSION, type Quality } from "./demos/coverage";
 import { loadHdrEnvironment, type LoadedEnvironment } from "./environment/hdr";
-import { createProceduralSkyEnvironment } from "./environment/sky";
 import { sectionInfo } from "./demos/sections";
 import { sourceFor } from "./demos/sources";
 import type { SceneDefinition, SceneMesh } from "./demos/types";
@@ -32,12 +31,8 @@ type Tab = "3d" | "atlas" | "code";
 type BakeState = "idle" | "baking" | "done" | "error";
 type FailureMode = "webgl2" | "float" | "lightmapper" | "xatlas" | "hdri";
 
-/** Preview routes cap the atlas at 512² by default. The procedural-sky scene
- *  is much heavier on software WebGL2 and uses a 256² preview budget. */
+/** Preview routes cap the atlas at 512² to keep software WebGL2 capture affordable. */
 const PREVIEW_ATLAS_CAP = 512;
-const PREVIEW_ATLAS_CAPS: Record<string, number> = {
-  "sun-sky-outdoor": 256
-};
 
 interface ShowcaseDebug {
   id: string;
@@ -601,7 +596,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       .filter((mesh) => mesh.kind === "emissive")
       .map(toEmissiveInput);
 
-    const previewAtlasCap = PREVIEW_ATLAS_CAPS[scenario.meta.id] ?? PREVIEW_ATLAS_CAP;
+    const previewAtlasCap = PREVIEW_ATLAS_CAP;
     const atlasSize = preview
       ? Math.min(scenario.bake.atlasSize, previewAtlasCap)
       : scenario.bake.atlasSize;
@@ -631,28 +626,11 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     const environmentBake = scenario.bake.environmentBake;
     if (environmentDescriptor) {
       try {
-        loadedEnvironment =
-          environmentDescriptor.kind === "hdr"
-            ? await loadHdrEnvironment(environmentDescriptor.url, {
-                intensity: environmentDescriptor.intensity
-              })
-            : createProceduralSkyEnvironment(
-                environmentDescriptor,
-                null,
-                environmentBake?.sun
-              );
+        loadedEnvironment = await loadHdrEnvironment(environmentDescriptor.url, {
+          intensity: environmentDescriptor.intensity
+        });
       } catch (error) {
-        if (!disposed) {
-          if (environmentDescriptor.kind === "hdr") {
-            showFailure("hdri", error);
-          } else {
-            showError(
-              "environment",
-              "Environment could not be generated",
-              error instanceof Error ? error.message : String(error)
-            );
-          }
-        }
+        if (!disposed) showFailure("hdri", error);
         return;
       }
     }
@@ -710,13 +688,11 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
         zFar: scenario.bake.zFar,
         hemisphereWeight: scenario.bake.hemisphereWeight,
         environmentPrefilter:
-          environmentDescriptor?.kind === "hdr"
-            ? environmentBake?.prefilterRadius !== undefined
-              ? { radius: environmentBake.prefilterRadius }
-              : true
+          environmentDescriptor === undefined
+            ? false
             : environmentBake?.prefilterRadius !== undefined
               ? { radius: environmentBake.prefilterRadius }
-              : false
+              : true
       }
     };
     setBaking(false);

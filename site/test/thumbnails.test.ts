@@ -121,24 +121,22 @@ describe("thumbnail manifest", () => {
 
   it("includes the checked-in HDRIs in the environment source hashes", () => {
     const studio = "src/assets/environments/studio_small_09_1k.hdr";
-    const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
-    expect(sourceFilesFor("hdri-studio")).toContain(studio);
-    expect(sourceFilesFor("hdri-outdoor")).toContain(outdoor);
-    expect(sourceFilesFor("hdri-studio")).toContain("src/environment/hdr.ts");
-    expect(sourceFilesFor("hdri-outdoor")).toContain("src/environment/hdr.ts");
+    const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_puresky_1k.hdr";
+    const dusk = "src/assets/environments/qwantani_dusk_2_puresky_1k.hdr";
+    const environments = [
+      ["hdri-studio", studio],
+      ["hdri-outdoor", outdoor],
+      ["hdri-dusk", dusk]
+    ] as const;
+    for (const [id, asset] of environments) {
+      expect(sourceFilesFor(id)).toContain(asset);
+      expect(sourceFilesFor(id)).toContain("src/environment/hdr.ts");
+    }
     expect(sourceFilesFor("cornell-box")).not.toContain(studio);
     expect(sourceFilesFor("cornell-box")).not.toContain(outdoor);
+    expect(sourceFilesFor("cornell-box")).not.toContain(dusk);
     expect(sourceHash("hdri-studio")).not.toBe(sourceHash("hdri-outdoor"));
-  });
-
-  it("includes the procedural generator and no HDRI for sun-sky-outdoor", () => {
-    const studio = "src/assets/environments/studio_small_09_1k.hdr";
-    const outdoor = "src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr";
-    expect(sourceFilesFor("sun-sky-outdoor")).toContain("src/environment/sky.ts");
-    expect(sourceFilesFor("sun-sky-outdoor")).toContain("src/environment/hdr.ts");
-    expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(studio);
-    expect(sourceFilesFor("sun-sky-outdoor")).not.toContain(outdoor);
-    expect(sourceHash("sun-sky-outdoor")).not.toBe(sourceHash("hdri-outdoor"));
+    expect(sourceHash("hdri-outdoor")).not.toBe(sourceHash("hdri-dusk"));
   });
 
   it("has no orphan thumbnail images", () => {

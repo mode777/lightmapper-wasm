@@ -76,7 +76,7 @@ async function checkGallery(browser, base, results) {
         environmentVisible.length === 3 &&
           environmentVisible.includes("hdri-studio") &&
           environmentVisible.includes("hdri-outdoor") &&
-          environmentVisible.includes("sun-sky-outdoor"),
+          environmentVisible.includes("hdri-dusk"),
         environmentVisible.join(",")
       )
     );
@@ -224,23 +224,44 @@ async function checkPreviewBake(browser, base, id, results) {
           JSON.stringify({ hdriRequests, external })
         )
       );
-    } else if (id === "sun-sky-outdoor") {
-      const hdriRequests = await page.evaluate(() =>
-        performance
-          .getEntriesByType("resource")
-          .map((entry) => entry.name)
-          .filter((url) => url.includes(".hdr"))
-      );
-      results.push(
-        check(
-          `${id} uses no HDRI asset`,
-          hdriRequests.length === 0,
-          JSON.stringify(hdriRequests)
-        )
-      );
     }
 
     results.push(check(`${id} has no page errors`, pageErrors.length === 0, pageErrors.map((e) => e.message).join("; ")));
+  } finally {
+    await page.close();
+  }
+}
+
+async function checkRemovedRoute(browser, base, results) {
+  const { page, pageErrors } = await openRoute(
+    browser,
+    base,
+    "/#/p/sun-sky-outdoor",
+    "removed-route"
+  );
+  try {
+    await waitForExpression(page, "document.querySelector('.not-found') !== null", {
+      timeout: 30_000
+    });
+    const state = await page.evaluate(() => ({
+      notFound: Boolean(document.querySelector(".not-found")),
+      demo: Boolean(document.querySelector(".demo-page")),
+      message: document.querySelector(".not-found h1")?.textContent ?? ""
+    }));
+    results.push(
+      check(
+        "removed sun-sky-outdoor route shows not found",
+        state.notFound && !state.demo && state.message.length > 0,
+        JSON.stringify(state)
+      )
+    );
+    results.push(
+      check(
+        "removed route has no page errors",
+        pageErrors.length === 0,
+        pageErrors.map((error) => error.message).join("; ")
+      )
+    );
   } finally {
     await page.close();
   }
@@ -297,7 +318,8 @@ async function main() {
   try {
     browser = await launchBrowser();
     await checkGallery(browser, server.url, results);
-    await checkPreviewBake(browser, server.url, "sun-sky-outdoor", results);
+    await checkRemovedRoute(browser, server.url, results);
+    await checkPreviewBake(browser, server.url, "hdri-dusk", results);
     await checkPreviewBake(browser, server.url, "cornell-box", results);
     await checkPreviewBake(browser, server.url, "tabletop-atlas", results);
     await checkPreviewBake(browser, server.url, "hdri-studio", results);

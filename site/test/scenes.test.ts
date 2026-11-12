@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { SCENARIOS, validateScene } from "../src/demos";
+import { hdriDusk } from "../src/demos/hdri-dusk";
 import { hdriOutdoor } from "../src/demos/hdri-outdoor";
 import { hdriStudio } from "../src/demos/hdri-studio";
-import { sunSkyOutdoor } from "../src/demos/sun-sky-outdoor";
 import { tabletopAtlas } from "../src/demos/tabletop-atlas";
 import { validateGeometry } from "../src/demos/geometry";
 import {
@@ -10,6 +10,17 @@ import {
   MIN_OUTDOOR_SUN_TEXELS,
   sunTexels
 } from "../src/demos/sampling";
+
+function assertPrefilteredBudget(scenario: typeof hdriOutdoor, label: string): void {
+  const radius = scenario.bake.environmentBake?.prefilterRadius;
+  expect(radius).toBeGreaterThan(2);
+  const effectiveDiameter = (radius ?? 2) * 2 * (Math.PI / 64);
+  expect(sunTexels(effectiveDiameter, 64)).toBeGreaterThanOrEqual(
+    MIN_OUTDOOR_SUN_TEXELS
+  );
+  assertSunSamplingBudget(effectiveDiameter, 64, label);
+  assertSunSamplingBudget(effectiveDiameter, 128, `${label}/high`);
+}
 
 describe("scene catalog validity", () => {
   for (const scenario of SCENARIOS) {
@@ -57,59 +68,36 @@ describe("scene catalog validity", () => {
     if (outdoorEnvironment?.kind !== "hdr") {
       throw new Error("hdri-outdoor needs an HDRI environment");
     }
-    expect(outdoorEnvironment.url).toContain("kloofendal_48d_partly_cloudy_1k.hdr");
+    expect(outdoorEnvironment.url).toContain(
+      "kloofendal_48d_partly_cloudy_puresky_1k.hdr"
+    );
+    expect(outdoorEnvironment.url).not.toContain("kloofendal_48d_partly_cloudy_1k.hdr");
     expect(outdoorEnvironment.intensity).toBeGreaterThan(0);
   });
 
-  it("keeps sun-sky-outdoor procedural, directional and emitter-free", () => {
-    const result = validateScene(sunSkyOutdoor);
-    expect(result.litCount).toBeGreaterThan(0);
+  it("keeps hdri-dusk environment-only with black ambient and no emitters", () => {
+    const result = validateScene(hdriDusk);
+    expect(result.litCount).toBe(8);
     expect(result.emissiveCount).toBe(0);
-    expect(sunSkyOutdoor.bake.ambient).toEqual([0, 0, 0]);
-    expect(sunSkyOutdoor.meta.sections).toEqual(["environment"]);
-
-    const environment = sunSkyOutdoor.bake.environment;
-    expect(environment?.kind).toBe("sky");
-    if (environment?.kind !== "sky") {
-      throw new Error("sun-sky-outdoor needs a procedural sky environment");
+    expect(hdriDusk.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriDusk.meta.sections).toEqual(["environment"]);
+    const duskEnvironment = hdriDusk.bake.environment;
+    expect(duskEnvironment?.kind).toBe("hdr");
+    if (duskEnvironment?.kind !== "hdr") {
+      throw new Error("hdri-dusk needs an HDRI environment");
     }
-    expect("url" in environment).toBe(false);
-    expect(environment.sun.direction.every(Number.isFinite)).toBe(true);
-    expect(Math.hypot(...environment.sun.direction)).toBeGreaterThan(0);
-    expect(environment.sun.color.every(Number.isFinite)).toBe(true);
-    expect(environment.sun.angularRadius).toBeGreaterThan(0);
-    expect(environment.sun.angularRadius).toBeLessThan(Math.PI / 2);
+    expect(duskEnvironment.url).toContain("qwantani_dusk_2_puresky_1k.hdr");
+    expect(duskEnvironment.intensity).toBeGreaterThan(0);
   });
 
-  it("gives the outdoor scenes a larger, well-sampled bake sun", () => {
-    const display = sunSkyOutdoor.bake.environment;
-    if (display?.kind !== "sky") throw new Error("sun-sky-outdoor needs a sky");
-    const bakeSun = sunSkyOutdoor.bake.environmentBake?.sun;
-    expect(bakeSun).toBeDefined();
-    if (!bakeSun) throw new Error("sun-sky-outdoor needs a bake sun variant");
-    expect(bakeSun.angularRadius).toBeGreaterThan(display.sun.angularRadius);
-    expect(bakeSun.softness).toBeGreaterThan(0);
-    expect(bakeSun.softness).toBeLessThan(bakeSun.angularRadius);
-
-    const diameter = bakeSun.angularRadius * 2;
-    expect(sunTexels(diameter, 64)).toBeGreaterThanOrEqual(MIN_OUTDOOR_SUN_TEXELS);
-    assertSunSamplingBudget(diameter, 64, "sun-sky-outdoor");
-    assertSunSamplingBudget(diameter, 128, "sun-sky-outdoor/high");
-  });
-
-  it("gives the HDRI outdoor scene a wider prefiltered bake feature", () => {
-    const radius = hdriOutdoor.bake.environmentBake?.prefilterRadius;
-    expect(radius).toBeGreaterThan(2);
-    const effectiveDiameter = (radius ?? 2) * 2 * (Math.PI / 64);
-    expect(sunTexels(effectiveDiameter, 64)).toBeGreaterThanOrEqual(
-      MIN_OUTDOOR_SUN_TEXELS
-    );
-    assertSunSamplingBudget(effectiveDiameter, 64, "hdri-outdoor");
+  it("gives the outdoor HDRI scenes a wider prefiltered bake feature", () => {
+    assertPrefilteredBudget(hdriOutdoor, "hdri-outdoor");
+    assertPrefilteredBudget(hdriDusk, "hdri-dusk");
   });
 
   it("keeps non-outdoor scenes on the uniform default", () => {
     for (const scenario of SCENARIOS) {
-      if (scenario.meta.id === "sun-sky-outdoor" || scenario.meta.id === "hdri-outdoor") {
+      if (scenario.meta.id === "hdri-outdoor" || scenario.meta.id === "hdri-dusk") {
         continue;
       }
       expect(scenario.bake.hemisphereWeight, scenario.meta.id).toBeUndefined();
@@ -118,11 +106,11 @@ describe("scene catalog validity", () => {
     expect(hdriStudio.bake.hemisphereWeight).toBeUndefined();
   });
 
-  it("uses per-scene outdoor smoothing and 1024² environment atlases", () => {
-    expect(sunSkyOutdoor.bake.smoothPasses).toBe(4);
+  it("uses twelve-pass smoothing and 1024² environment atlases", () => {
+    expect(hdriDusk.bake.smoothPasses).toBe(12);
     expect(hdriOutdoor.bake.smoothPasses).toBe(12);
     expect(hdriStudio.bake.smoothPasses).toBe(12);
-    expect(sunSkyOutdoor.bake.atlasSize).toBe(1024);
+    expect(hdriDusk.bake.atlasSize).toBe(1024);
     expect(hdriOutdoor.bake.atlasSize).toBe(1024);
     expect(hdriStudio.bake.atlasSize).toBe(1024);
   });

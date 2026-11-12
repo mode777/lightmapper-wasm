@@ -15,9 +15,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "ae87eb1529ee5d2b3e1c8d7c0affe354e4e85f1c83887172d90708db73313e5a",
+      "sourceHash": "94e29a355906f9000a5dc9a11875fd048b2b8bc3d302d672794080f5c18e0593",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:19:19.339Z"
+      "capturedAt": "2026-11-12T06:40:22.523Z"
     },
     "cornell-box": {
       "file": "cornell-box.webp",
@@ -25,9 +25,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "48162cc70eef631d91d92a072033047844f1f47e74f893310538431299c9fb93",
+      "sourceHash": "1af0b3df843c994d0ed3a903984162f8449b1dcd79fbab62c81544e824a5c88a",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:20:13.484Z"
+      "capturedAt": "2026-11-12T06:41:12.936Z"
     },
     "emissive-alcove": {
       "file": "emissive-alcove.webp",
@@ -35,9 +35,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "633d6e98e5a1cccabce9d052f96d140e9ccd3a17029318b5a148a8d79d3f9034",
+      "sourceHash": "03e669d6fd54ceaf18e8a3bd9e467e6cc93ac8ec023a1c3bad242bd4ca343078",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:23:20.142Z"
+      "capturedAt": "2026-11-12T06:44:26.486Z"
     },
     "tabletop-atlas": {
       "file": "tabletop-atlas.webp",
@@ -45,9 +45,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "0d3def12296e0af305fb1953ef6f2a0d95b4c8c05c333b347b8e8725e66dbc6c",
+      "sourceHash": "0cba541aaf0b588aa856815e1e5d899be5c8e7013fd0fbaa5d75cfcece6105d2",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:25:31.659Z"
+      "capturedAt": "2026-11-12T06:46:31.098Z"
     },
     "hdri-studio": {
       "file": "hdri-studio.webp",
@@ -55,9 +55,9 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "345955c346d9d8eb584538eedac4a26448b995c1d47e0b450d842269d8870dff",
+      "sourceHash": "474f1583e25aadb04af5a13430075ab18dfb0a25c4013cdeae4ae67baea61d40",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:27:08.071Z"
+      "capturedAt": "2026-11-12T06:48:11.112Z"
     },
     "hdri-outdoor": {
       "file": "hdri-outdoor.webp",
@@ -65,19 +65,19 @@
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "2229d9d40599664adc5ce815e123ab1ee46618379ab812b15d539feeea4033f9",
+      "sourceHash": "d6490cdf89ac03c61c1949ab773b503533c92ee68e4e7b6bfe02123fc51721d4",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:29:00.986Z"
+      "capturedAt": "2026-11-12T06:49:58.783Z"
     },
-    "sun-sky-outdoor": {
-      "file": "sun-sky-outdoor.webp",
+    "hdri-dusk": {
+      "file": "hdri-dusk.webp",
       "width": 640,
       "height": 400,
       "pixelWidth": 1280,
       "pixelHeight": 800,
-      "sourceHash": "9eb934982bd26c17ca4793976b0ae06b2d1fee6c606907121001d75626a8e937",
+      "sourceHash": "66e8ead1808cda17a90299fb20faf25fed07feb41924109d02e52d0b4afffd7c",
       "previewVersion": 1,
-      "capturedAt": "2026-11-11T09:29:34.046Z"
+      "capturedAt": "2026-11-12T06:51:46.535Z"
     }
   }
 }

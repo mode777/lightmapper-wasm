@@ -16,7 +16,7 @@ function lit(name: string, geometry: GeometryData, albedo: Vec3, transform: Tran
 }
 
 const ENVIRONMENT_URL = new URL(
-  "../assets/environments/kloofendal_48d_partly_cloudy_1k.hdr",
+  "../assets/environments/kloofendal_48d_partly_cloudy_puresky_1k.hdr",
   import.meta.url
 ).href;
 
@@ -25,7 +25,7 @@ export const hdriOutdoor: SceneDefinition = {
     id: "hdri-outdoor",
     title: "Daylight HDRI",
     description:
-      "A midday outdoor set lit only by a partly cloudy sky HDRI. Direct sun, cloud shadows and sky fill come from the environment; there are no analytic lights or emitters.",
+      "A midday outdoor set lit only by a partly cloudy Pure Sky HDRI. Direct sun, cloud shadows and sky fill come from the environment; the photographed ground is removed so the scene floor is the only ground. There are no analytic lights or emitters.",
     features: ["Daytime HDRI", "Sun + sky", "Outdoor", "No emitters"],
     sections: ["environment"],
     camera: { position: [6.2, 3.1, 7.4], target: [0, 1.15, -0.2], fov: 43 }

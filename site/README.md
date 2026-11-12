@@ -21,12 +21,12 @@ Cornell box is one catalog example, not a featured shortcut.
 | `emissive-alcove` | Arbitrary emissive geometry and HDR neon bars | 512² atlas, H64, 2 bounces, black ambient |
 | `tabletop-atlas` | Twelve lit meshes in one shared xatlas atlas | 1024² atlas, H64, 2 bounces, warm emitter |
 | `hdri-studio` | Environment-only studio lighting from a checked-in 1k HDRI | 1024² atlas, H32, 2 bounces, black ambient + HDRI |
-| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in 1k sky HDRI | 1024² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter, 12 smoothing passes |
-| `sun-sky-outdoor` | Non-HDRI outdoor lighting from a generated procedural sky and directional sun | 1024² atlas, H64, 2 bounces, cosine, 0.22 rad bake sun |
+| `hdri-outdoor` | Environment-only midday outdoor lighting from a checked-in Pure Sky HDRI | 1024² atlas, H32 preset, 2 bounces, cosine, 7-tap prefilter, 12 smoothing passes |
+| `hdri-dusk` | Environment-only blue-hour outdoor lighting from a checked-in Pure Sky dusk HDRI | 1024² atlas, H64, 2 bounces, cosine, 7-tap prefilter, 12 smoothing passes |
 
 Sections are technique filters: `ambient`, `environment`, `gi`, `emissive` and
-`multi-object`. The `environment` section covers both checked-in HDRI and
-procedural-sky scenes. “Shared atlas”, “xatlas” and “HDR” are feature labels
+`multi-object`. The `environment` section covers the three checked-in HDRI
+scenes. “Shared atlas”, “xatlas” and “HDR” are feature labels
 because every scenario uses the same UV pipeline.
 
 ## Local development
@@ -60,15 +60,15 @@ CHROME_SHELL_PATH=… npm run test:smoke --prefix site     # gallery, previews, 
 ```
 
 The Node suite covers catalog metadata, scene geometry, xatlas contracts, raw
-source coverage, HDRI provenance, procedural-sky generation/validation and
-checked-in thumbnails. The browser suites run in headless Chrome with ANGLE
+source coverage, HDRI provenance and the checked-in assets, and checked-in
+thumbnails. The browser suites run in headless Chrome with ANGLE
 SwiftShader: `test:harness` bakes a lit quad under an emissive ceiling, a
-two-object shared atlas and environment-only scenes, checks the procedural
-sun's direction/intensity/occlusion behavior, checks progress/cancellation and
+two-object shared atlas and environment-only scenes, checks the environment's
+direction/intensity/occlusion behavior, checks progress/cancellation and
 exercises the display texture/mode/background/disposal paths. `test:smoke`
 drives the gallery, the Cornell box, tabletop, HDRI studio, HDRI outdoor and
-sun-and-sky outdoor preview routes, the tab views and the forced
-capability/asset failure routes.
+HDRI dusk preview routes, the removed-route not-found page, the tab views and
+the forced capability/asset failure routes.
 
 ## Scene contract
 
@@ -90,10 +90,9 @@ interface SceneDefinition {
     hemisphereSize: number; // power of two
     bounces: number;
     ambient: [number, number, number]; // linear
-    environment?: SceneEnvironment; // HDRI or procedural sky
+    environment?: SceneEnvironment; // checked-in equirectangular HDRI
     hemisphereWeight?: "uniform" | "cosine"; // default uniform
     environmentBake?: {
-      sun?: { angularRadius: number; softness?: number }; // procedural bake lobe
       prefilterRadius?: number; // HDRI bake blur radius in target texels
     };
     zNear?: number;
@@ -137,25 +136,27 @@ triangles for every scenario.
 
 ## HDRI environments
 
-The showcase has two HDRI environment-only scenarios, each using a checked-in
-1k CC0 HDR from Poly Haven. A third environment-only scenario,
-`sun-sky-outdoor`, uses a generated procedural sky instead of a file; see the
-next subsection.
+The showcase has three HDRI environment-only scenarios, each using a checked-in
+1k CC0 HDR from Poly Haven. Both outdoor scenes use Poly Haven's Pure Sky
+variants, which remove the photographed ground so the scene floor is the only
+ground and the background has no second horizon.
 
 | Scenario | Asset | Author | Local file |
 |---|---|---|---|
 | `hdri-studio` | `studio_small_09` | Sergej Majboroda | `src/assets/environments/studio_small_09_1k.hdr` |
-| `hdri-outdoor` | `kloofendal_48d_partly_cloudy` | Greg Zaal | `src/assets/environments/kloofendal_48d_partly_cloudy_1k.hdr` |
+| `hdri-outdoor` | `kloofendal_48d_partly_cloudy_puresky` | Greg Zaal, Jarod Guest | `src/assets/environments/kloofendal_48d_partly_cloudy_puresky_1k.hdr` |
+| `hdri-dusk` | `qwantani_dusk_2_puresky` | Greg Zaal, Jarod Guest | `src/assets/environments/qwantani_dusk_2_puresky_1k.hdr` |
 
 Provenance, sizes, MD5s and the Poly Haven API endpoints are recorded in
-`src/assets/environments/README.md`. Both assets are CC0 1.0.
+`src/assets/environments/README.md`. All three assets are CC0 1.0.
 
 Refresh and verify the assets:
 
 ```sh
-npm run fetch:hdri --prefix site -- --check   # offline size/MD5 check for both
-npm run fetch:hdri --prefix site -- --force   # resolve via the Poly Haven API and replace both
-npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy
+npm run fetch:hdri --prefix site -- --check   # offline size/MD5 check for all three
+npm run fetch:hdri --prefix site -- --force   # resolve via the Poly Haven API and replace all three
+npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy_puresky
+npm run fetch:hdri --prefix site -- --force --asset=qwantani_dusk_2_puresky
 ```
 
 The script resolves each download URL through the Poly Haven API. The site
@@ -173,58 +174,17 @@ hemisphere, so prefiltering is the standard diffuse-lighting setup. The
 scene's intensity multiplier is applied separately by both paths.
 
 `hdri-studio` keeps the five-tap prefilter and twelve smoothing passes.
-`hdri-outdoor` uses a wider seven-tap prefilter (`prefilterRadius: 3`), twelve
-smoothing passes and cosine hemisphere weighting. The outdoor lightmap is
-1024²; a 1024² lightmap with only four passes exposed fine line artifacts, so
-the HDRI scene keeps the original twelve-pass smoothing. The lightmapper's coarse
-hierarchical interpolation (four passes / 16-texel steps) produced large
-diamond artifacts on the walls and floor, so both presets use one fine
-interpolation pass. The outdoor scene is intentionally a partly cloudy
+`hdri-outdoor` and `hdri-dusk` use a wider seven-tap prefilter
+(`prefilterRadius: 3`), twelve smoothing passes and cosine hemisphere
+weighting. Both outdoor lightmaps are 1024²; a 1024² lightmap with only four
+passes exposed fine line artifacts, so both keep twelve-pass smoothing. The
+lightmapper's coarse hierarchical interpolation (four passes / 16-texel steps)
+produced large diamond artifacts on the walls and floor, so both presets use
+one fine interpolation pass. `hdri-outdoor` is intentionally a partly cloudy
 multi-source environment: the direct sun is dominant, but the clouds remain
-soft area-light fill.
-
-### Procedural sun-and-sky environment
-
-`sun-sky-outdoor` does not load a file. Its scene environment is a
-`SceneEnvironment` with `kind: "sky"` and these fields:
-
-```ts
-interface ProceduralSky {
-  zenith: [number, number, number];  // linear
-  horizon: [number, number, number]; // linear
-  ground: [number, number, number];  // linear
-  intensity?: number;                // default 1
-  width?: number;                    // default 512
-  height?: number;                   // default 256
-  sun: {
-    direction: [number, number, number]; // world-space, surface -> sun; normalized
-    color: [number, number, number];     // linear radiance in the disk
-    angularRadius: number;               // radians, (0, PI / 2)
-    intensity?: number;                  // default 1
-  };
-}
-```
-
-`src/environment/sky.ts` generates bottom-up linear RGBA float data from the
-gradient and the sun disk. Row 0 is the south pole (`v = 0`) and the last row is
-the north pole (`v = 1`), matching the HDRI contract. The sun is a soft-edged
-disk at `sun.direction`; because the lightmapper integrates the caller-drawn
-environment, it acts as the scene's directional light and is occluded by scene
-geometry. The generator validates its descriptor and reuses the studio
-`validateEnvironment` check; it never fetches an asset.
-
-The display keeps the `0.06` rad visible disk. The bake uses a much larger,
-softer lobe (`0.22` rad with a `0.08` rad soft edge and a flux-preserving
-intensity scale) so the H64 hemicube sees about eighteen texels. That is
-deliberately an area light: the shadow is soft, not a crisp parallel sun. The
-preset uses a 1024 × 512 environment, black ambient, cosine hemisphere
-weighting and four smoothing passes; standard quality is H64, high is H128 and
-preview uses draft H32. There is no separate shadow-map or direct-light pass;
-the environment remains the only lighting input.
-
-The site scene test enforces the sampling budget as
-`sunAngularDiameter / (90 / hemisphereSize) >= 6` at H64 and H128. The H32
-preview is a draft capture and is exempt.
+soft area-light fill. `hdri-dusk` has no visible sun disk; its warm horizon
+band and blue sky supply soft, low-contrast blue-hour fill, so its shadows are
+broad and omni-directional rather than a crisp parallel sun.
 
 ## Hemisphere weighting
 
@@ -304,9 +264,8 @@ Each route (`#/p/<id>`) has three tabs:
 
 Switching tabs never re-bakes. `#/p/<id>?preview=1` hides the header, tabs,
 aside, meta bar and footer, fixes the stage to 16:10 and bakes at draft quality
-(draft hemisphere size, one bounce, atlas capped at 512²; the heavier
-`sun-sky-outdoor` preview caps its atlas at 256²). The capture script uses this
-mode.
+(draft hemisphere size, one bounce, atlas capped at 512²). The capture script
+uses this mode.
 
 ## Thumbnails
 
@@ -342,11 +301,9 @@ catalog order; `--no-build` skips the Vite build when `site/dist` is current.
 - A scene module change (`src/demos/<id>.ts`, `geometry.ts`, `types.ts` or
   `sections.ts`) changes that source hash and requires recapturing the
   affected thumbnails. `npm test --prefix site` fails on stale hashes.
-- The `sun-sky-outdoor` hash also includes `src/environment/sky.ts` and
-  `src/environment/hdr.ts`; changing the procedural generator or the shared
-  environment texture helper requires recapturing that thumbnail.
-- Both HDRI hashes include `src/environment/hdr.ts`, so changing the prefilter
-  requires recapturing the studio and outdoor HDRI thumbnails.
+- All three HDRI hashes include their checked-in asset and
+  `src/environment/hdr.ts`; changing the prefilter or an asset requires
+  recapturing the affected HDRI thumbnails.
 - A change to the viewport, lighting, materials or preview CSS can change the
   captured image without changing a scene source. Bump `PREVIEW_VERSION` in
   `src/demos/coverage.ts` and recapture all seven thumbnails.

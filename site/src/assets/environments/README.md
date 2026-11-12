@@ -14,18 +14,38 @@
 The HDRI is checked in and served by the showcase from its own origin. The
 site never downloads it from Poly Haven at runtime.
 
-## kloofendal_48d_partly_cloudy_1k.hdr
+## kloofendal_48d_partly_cloudy_puresky_1k.hdr
 
-- **Source:** Poly Haven, <https://polyhaven.com/a/kloofendal_48d_partly_cloudy>
-- **API endpoint:** <https://api.polyhaven.com/files/kloofendal_48d_partly_cloudy>
+- **Source:** Poly Haven, <https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky>
+- **API endpoint:** <https://api.polyhaven.com/files/kloofendal_48d_partly_cloudy_puresky>
   (`hdri["1k"].hdr.url`)
-- **Author:** Greg Zaal
+- **Authors:** Greg Zaal (original), Jarod Guest (sky edits)
 - **License:** CC0 1.0 Universal (public-domain dedication)
-- **Downloaded size:** 1,637,206 bytes
-- **MD5:** `ee096fe9e26ce29d8f110b5ba0579011`
+- **Downloaded size:** 1,435,119 bytes
+- **MD5:** `c69498687e876bf68d2a8b8a62234eb9`
 - **Resolution:** 1024 × 512 (equirectangular Radiance RGBE)
-- **Content:** high-contrast midday sky with sun, scattered cumulus clouds and
-  grassy, rocky hills.
+- **Content:** high-contrast midday sky with a visible sun, scattered cumulus
+  clouds and a dim sky fill below the horizon. This is the Pure Sky variant: the
+  photographed ground, grass and hills are removed, so the showcase scene
+  supplies the only ground plane.
+
+The HDRI is checked in and served by the showcase from its own origin. The
+site never downloads it from Poly Haven at runtime.
+
+## qwantani_dusk_2_puresky_1k.hdr
+
+- **Source:** Poly Haven, <https://polyhaven.com/a/qwantani_dusk_2_puresky>
+- **API endpoint:** <https://api.polyhaven.com/files/qwantani_dusk_2_puresky>
+  (`hdri["1k"].hdr.url`)
+- **Authors:** Greg Zaal (photography), Jarod Guest (processing)
+- **License:** CC0 1.0 Universal (public-domain dedication)
+- **Downloaded size:** 1,166,018 bytes
+- **MD5:** `d400530e33f683654e70b4a087b6fe8d`
+- **Resolution:** 1024 × 512 (equirectangular Radiance RGBE)
+- **Content:** low-contrast blue-hour dusk sky with a warm band along the
+  horizon, thin clouds and no visible sun disk. This is the Pure Sky variant:
+  the photographed ground is removed, so the dusk scene supplies the only
+  ground plane.
 
 The HDRI is checked in and served by the showcase from its own origin. The
 site never downloads it from Poly Haven at runtime.
@@ -35,8 +55,8 @@ site never downloads it from Poly Haven at runtime.
 ```sh
 npm run fetch:hdri --prefix site -- --check   # verify all checked-in HDRIs
 npm run fetch:hdri --prefix site -- --force   # re-download and replace all
-npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy
-npm run fetch:hdri --prefix site -- --force --asset=studio_small_09
+npm run fetch:hdri --prefix site -- --check --asset=kloofendal_48d_partly_cloudy_puresky
+npm run fetch:hdri --prefix site -- --force --asset=qwantani_dusk_2_puresky
 ```
 
 The script resolves the download URL through the Poly Haven API and verifies

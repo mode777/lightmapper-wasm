@@ -92,10 +92,10 @@ and re-runs verification. Wrapper-only improvements do not require a C change.
   `npm run test:consumer` cover the dist layout, loader scenarios and a Vite
   6.4.5 consumer (F5, F12 packaging).
 - The public showcase lives under `site/` and consumes the tested `dist`
-  artifact with `lightmapper-wasm: file:..` (AD-015). It has seven procedural
-  scenarios, an xatlas-everywhere UV pipeline with the `[0,1)` clamp (AD-016),
-  an environment path for the bake skybox and display background (AD-017) that
-  accepts checked-in HDRIs and generated procedural skies, a display-agnostic
+  artifact with `lightmapper-wasm: file:..` (AD-015). It has seven scenarios,
+  an xatlas-everywhere UV pipeline with the `[0,1)` clamp (AD-016), an
+  environment path for the bake skybox and display background (AD-017) fed by
+  three checked-in Poly Haven HDRIs (AD-028), a display-agnostic
   raw-WebGL bake harness, a three.js display layer, checked-in thumbnails and a
   `Main`-only Pages deployment. The reusable unwrap/bake pipeline is published
   as the standalone `lightmap-studio` package (AD-025/AD-026) and the site
@@ -444,6 +444,7 @@ are the intended kebab-case change names.
 | 14 | `isolate-lightmap-studio` (AD-021/022/023/024) | this repo | 10–13 | Implemented (private studio + site consumer) | Private `studio/` package, engine-agnostic API, site consumes it |
 | 15 | `bootstrap-lightmap-studio` (AD-025/AD-026) | new `lightmap-studio` repo | 14 | Implemented (`lightmap-studio@0.1.0`) | Standalone package with build, types, loader, docs, tests and npm publish |
 | 16 | `consume-lightmap-studio` (AD-027) | this repo | 15 | Implemented (`lightmap-studio@^0.1.0` from npm) | Remove the local studio and consume the npm package from the site |
+| 17 | `rework-outdoor-hdri-scenes` (AD-028) | this repo | 10, 11, 13 | Implemented (three Pure Sky HDRIs + dusk scene) | Remove the synthetic scene, swap in Pure Sky HDRIs and add a dusk HDRI scene |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the
@@ -451,7 +452,9 @@ fix. Changes 4 and 5 are implemented here; changes 6–8 remain proposed. Change
 9 spans both and is the final documentation/release gate. Changes 10–13 are the
 implemented showcase sequence. Changes 14–16 are implemented; the studio now
 lives only in `mode777/lightmap-studio`, and change 16 is the consume stage that
-removed the local copy.
+removed the local copy. Change 17 is implemented: the procedural scene and its
+generator are removed, both outdoor HDRIs use the Pure Sky variants, and the
+catalog gained the `hdri-dusk` scene.
 
 ---
 
@@ -755,8 +758,8 @@ the build workflow's dist artifact, a site job and a `Main`-only Pages deploy.
 
 **Acceptance:**
 - `ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
-  `hdri-studio`, `hdri-outdoor` and `sun-sky-outdoor` build procedurally and
-  share the catalog metadata contract.
+  `hdri-studio`, `hdri-outdoor` and `hdri-dusk` build and share the catalog
+  metadata contract.
 - Every lit mesh is packed into one xatlas atlas; positions/normals are copied
   through `xref`; normalized UVs are clamped below `1.0`; emitters are not in
   the atlas.
@@ -821,10 +824,10 @@ package changes.
 - The raw 1k softbox/sun detail does not produce large diamond artifacts: the
   bake uses a prefiltered irradiance copy, one fine interpolation pass and
   twelve smoothing passes, verified by a headless stage capture.
-- The site emits and references both hashed HDRIs, and never requests Poly
-  Haven at runtime.
+- The site emits and references all checked-in hashed HDRIs, and never requests
+  Poly Haven at runtime.
 - The gallery lists seven scenarios with an `environment` filter (including
-  the two HDRI scenarios and the procedural-sky scenario), attributes
+  the three HDRI scenarios), attributes
   `lightmapper.h` with an upstream link, and does not feature an individual
   scenario in the global navigation or hero.
 
@@ -848,6 +851,11 @@ shadows, and the gradient provides sky fill. The scene has black ambient and no
 emissive meshes, and the environment is generated deterministically at runtime
 with no asset request. The `environment` section now covers both checked-in
 HDRI and procedural-sky scenes.
+
+**Status update (2026-11-12).** `rework-outdoor-hdri-scenes` removed this scene
+and its generator; the `environment` section now covers checked-in HDRIs only.
+The cosine weighting, HDRI prefilter, 1024² atlases and six-texel sampling
+budget introduced around this scene remain (7.17, AD-028).
 
 **Goal:** prove a non-HDRI outdoor workflow and give the gallery a directional
 sun-and-sky reference.
@@ -942,6 +950,11 @@ suites, thumbnail capture, production build/check and `npm run verify:remote`.
 **ADR footprint:** adds AD-020; extends AD-017 without superseding it and does
 not change `add-sun-sky-outdoor-lighting`'s environment-only decision.
 AD-018/AD-019 are withdrawn by AD-021; the studio owns the harness and three.js stays sample-only.
+
+**Status update (2026-11-12).** `rework-outdoor-hdri-scenes` (7.17, AD-028)
+removed `sun-sky-outdoor`, so this change's procedural-scene smoothing clause is
+retired. Its hemicube-only path, cosine weighting, HDRI prefilter, 1024²
+atlases and six-texel sampling budget still apply to the outdoor HDRI scenes.
 
 
 ### 7.14 `isolate-lightmap-studio` — this repo (implemented)
@@ -1071,6 +1084,44 @@ probes, the site harness/smoke/build check and `npm run verify:remote`.
 **ADR footprint:** adds AD-027; implements AD-021 stage 3 and completes AD-025's
 handoff. No accepted ADR is superseded.
 
+### 7.17 `rework-outdoor-hdri-scenes` — this repo (implemented)
+
+**Status:** Implemented (AD-028). The synthetic `sun-sky-outdoor` scene and the
+site-local procedural sky generator are removed; the gallery keeps seven
+scenarios, and every environment scene is a checked-in CC0 Poly Haven HDRI.
+`hdri-outdoor` uses the Pure Sky `kloofendal_48d_partly_cloudy_puresky` 1k HDRI,
+and the new `hdri-dusk` scene uses `qwantani_dusk_2_puresky` for a soft
+blue-hour courtyard fill. Both outdoor scenes keep cosine weighting, a
+seven-tap prefiltered bake copy, twelve smoothing passes, 1024² atlases and the
+six-texel H64/H128 sampling budget. The site carries three checked-in HDRIs
+(studio, Pure Sky daylight, Pure Sky dusk); the thumbnails, provenance note,
+refresh script and production build all cover three assets.
+
+**Goal:** make every environment scenario a photographed sky, remove the
+second environment implementation and add a dusk lighting reference.
+
+**Scope:** `site/src/demos/` (delete `sun-sky-outdoor`, add `hdri-dusk`, update
+`hdri-outdoor` and the catalog/source/coverage/section metadata),
+`site/src/environment/sky.ts` (deleted), `site/src/demo-page.ts`, the checked-in
+environment assets and provenance README, the preview thumbnails and manifest,
+the site scripts and tests, `site/README.md`, `README.md`,
+`openspec/config.yaml`, `docs/decisions.md` and this roadmap. No C, wasm,
+loader, package-entry or studio change.
+
+**Acceptance:** the seven-scenario catalog is HDRI-only; the removed route
+shows the not-found page; both outdoor scenes pass the H64/H128 sampling budget
+with twelve smoothing passes and cosine weighting; the production build emits
+hashed `lightmapper.wasm`, `xatlas.wasm` and the three HDRIs; and the site
+harness, smoke and thumbnail suites pass.
+
+**Verification:** `npm run check --prefix site`, `npm test --prefix site`, the
+site harness and smoke suites, `npm run fetch:hdri --prefix site -- --check`,
+the production build/check, `npm run verify:remote` and the OpenSpec validator.
+
+**ADR footprint:** adds AD-028; extends AD-017, retires AD-020's
+procedural-scene clause without superseding AD-020, and implements no upstream
+task. No accepted ADR is contradicted.
+
 ---
 
 ## 8. Non-goals
@@ -1128,7 +1179,9 @@ environment atlases and sampling budget. `bootstrap-lightmap-studio` is
 implemented with the standalone `lightmap-studio@0.1.0` package, and
 `consume-lightmap-studio` removed the local copy and switched the site to
 `lightmap-studio@^0.1.0` from the registry; `worker-support` remains an
-independent open item.
+independent open item. Change 17, `rework-outdoor-hdri-scenes`, replaced the
+procedural scene with the `hdri-dusk` HDRI scene and switched both outdoor
+HDRIs to Poly Haven's Pure Sky variants.
 
 For upstream C changes, propose them in `lightmapper` (or carry a
 `[lightmapper]` task here) and mirror the status in this roadmap. This repo’s

@@ -541,3 +541,35 @@ a studio fix arrives here as a version bump. The root tarball, exports and
 dependency graph are unchanged, CI no longer builds a studio package, and the
 showcase build still emits one hashed `lightmapper.wasm` and `xatlas.wasm`.
 AD-021's stage 3 and AD-025's handoff are complete; neither is superseded.
+
+## AD-028 — Showcase environment scenes use checked-in Poly Haven HDRIs only {#ad-028}
+
+**Context.** AD-017 gave the showcase an optional linear equirectangular
+environment for the bake skybox and display background and introduced the
+checked-in `hdri-studio` and `hdri-outdoor` scenes. A later change added a
+site-local procedural sky generator and the synthetic `sun-sky-outdoor` scene;
+that generator had exactly one consumer. The outdoor scene also used the
+ground-bearing Kloofendal variant, whose photographed grass, rock and hills
+duplicated the scene's own floor and put a second horizon in the background.
+
+**Decision.** Keep only checked-in Poly Haven CC0 HDRIs as showcase
+environment sources. Remove the `sun-sky-outdoor` scene and the site-local
+procedural sky generator, its `kind: "sky"` scene-environment member and its
+generator-only tests and documentation. Use Poly Haven's Pure Sky variants for
+the outdoor scenes, where the photographed ground is removed: `hdri-outdoor`
+switches to `kloofendal_48d_partly_cloudy_puresky`, and a new environment-only
+`hdri-dusk` scene uses `qwantani_dusk_2_puresky` for a low-contrast blue-hour
+fill. `hdri-dusk` keeps the outdoor preset contract: black ambient, no
+emitters, cosine hemisphere weighting, a prefiltered bake copy, twelve
+smoothing passes and a 1024² atlas. The studio's `EnvironmentInput` contract is
+unchanged.
+
+**Consequences.** The gallery keeps seven scenarios, but every `environment`
+scene is now a photographed sky and the site has one environment loader
+instead of two. The dusk scene adds a fill-only lighting regime with no crisp
+directional shadow, which is documented as intentional. AD-020's
+procedural-scene smoothing clause is retired; its hemicube-only path, cosine
+weighting and six-texel outdoor sampling budget still apply, and AD-020 is not
+superseded. This extends AD-017. There is no `lightmapper.h`, wasm, loader,
+package-entry or studio release change; the site build carries three checked-in
+HDRIs.

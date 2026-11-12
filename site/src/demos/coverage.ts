@@ -23,7 +23,7 @@ export const EXPECTED_SCENARIO_IDS = [
   "tabletop-atlas",
   "hdri-studio",
   "hdri-outdoor",
-  "sun-sky-outdoor"
+  "hdri-dusk"
 ] as const;
 
 export type ExpectedScenarioId = (typeof EXPECTED_SCENARIO_IDS)[number];

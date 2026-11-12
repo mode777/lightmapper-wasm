@@ -73,7 +73,8 @@ const xatlasFiles = findWasm("xatlas");
 const hdriFiles = listFiles(DIST).filter((file) => file.endsWith(".hdr"));
 const HDRI_ASSETS = [
   { prefix: "studio_small_09_1k", bytes: 1_615_248 },
-  { prefix: "kloofendal_48d_partly_cloudy_1k", bytes: 1_637_206 }
+  { prefix: "kloofendal_48d_partly_cloudy_puresky_1k", bytes: 1_435_119 },
+  { prefix: "qwantani_dusk_2_puresky_1k", bytes: 1_166_018 }
 ];
 
 function findHdriAsset(prefix) {
@@ -103,7 +104,7 @@ check("emits a hashed xatlas.wasm", () => {
   if (statSync(file).size <= 0) throw new Error("xatlas wasm is empty");
 });
 
-check("emits both checked-in HDRI assets", () => {
+check("emits all three checked-in HDRI assets", () => {
   if (hdriFiles.length !== HDRI_ASSETS.length) {
     throw new Error(`expected ${HDRI_ASSETS.length} .hdr assets, found ${hdriFiles.length}`);
   }
@@ -117,17 +118,19 @@ check("emits both checked-in HDRI assets", () => {
   }
 });
 
-check("builds the procedural sun-and-sky scene without an environment file", () => {
+check("builds every environment scenario against a checked-in HDRI", () => {
   if (hdriFiles.length !== HDRI_ASSETS.length) {
     throw new Error(
-      `expected exactly ${HDRI_ASSETS.length} .hdr assets for the procedural scene, found ${hdriFiles.length}`
+      `expected exactly ${HDRI_ASSETS.length} .hdr assets for the environment scenarios, found ${hdriFiles.length}`
     );
   }
   const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
   if (scripts.length === 0) throw new Error("no JavaScript was emitted");
   const source = scripts.map((file) => readFileSync(file, "utf8")).join("\n");
-  if (!source.includes("sun-sky-outdoor")) {
-    throw new Error("built JavaScript does not reference the sun-sky-outdoor scenario");
+  for (const id of ["hdri-studio", "hdri-outdoor", "hdri-dusk"]) {
+    if (!source.includes(id)) {
+      throw new Error(`built JavaScript does not reference the ${id} scenario`);
+    }
   }
 });
 
@@ -148,7 +151,7 @@ check("built JavaScript references both wasm assets", () => {
   }
 });
 
-check("built JavaScript references both HDRI assets", () => {
+check("built JavaScript references all three HDRI assets", () => {
   const scripts = listFiles(DIST).filter((file) => file.endsWith(".js"));
   if (scripts.length === 0) throw new Error("no JavaScript was emitted");
   const source = scripts.map((file) => readFileSync(file, "utf8")).join("\n");

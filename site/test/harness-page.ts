@@ -15,7 +15,6 @@ import {
 import { ThreeDisplay } from "../src/display/three";
 import { createLightmapTexture, lightmapFilterFor } from "../src/display/materials";
 import { createEnvironmentTexture } from "../src/environment/hdr";
-import { generateProceduralSky, type ProceduralSky } from "../src/environment/sky";
 
 interface CheckResult {
   name: string;
@@ -235,22 +234,90 @@ function horizonEnvironment(width = 8, height = 4): BakeEnvironment {
   return { width, height, data, intensity: 1 };
 }
 
-function proceduralSky(overrides: Partial<ProceduralSky> = {}): ProceduralSky {
-  return {
-    width: 64,
-    height: 32,
-    zenith: [0, 0, 0],
-    horizon: [0, 0, 0],
-    ground: [0, 0, 0],
-    intensity: 1,
-    sun: {
-      direction: [0, 1, 0],
-      color: [8, 8, 8],
-      angularRadius: 0.2,
-      intensity: 1
-    },
-    ...overrides
-  };
+interface SunEnvironmentOptions {
+  /** World-space direction from the surface toward the sun. */
+  direction: [number, number, number];
+  /** Linear radiance inside the disk. */
+  color: [number, number, number];
+  /** Angular radius in radians. */
+  angularRadius: number;
+  /** Soft edge width in radians; defaults to half the radius. */
+  softness?: number;
+  /** Multiplier on the sun disk radiance; defaults to 1. */
+  sunIntensity?: number;
+  /** Environment multiplier passed to the harness; defaults to 1. */
+  intensity?: number;
+  width?: number;
+  height?: number;
+  zenith?: [number, number, number];
+  horizon?: [number, number, number];
+  ground?: [number, number, number];
+}
+
+function mix(
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number
+): [number, number, number] {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Test-local bottom-up equirectangular environment: a gradient sky with a soft
+ * sun disk. Keeps the harness's directional-environment coverage without the
+ * removed site procedural-sky generator.
+ */
+function sunEnvironment(options: SunEnvironmentOptions): BakeEnvironment {
+  const width = options.width ?? 64;
+  const height = options.height ?? 32;
+  const zenith: [number, number, number] = options.zenith ?? [0, 0, 0];
+  const horizon: [number, number, number] = options.horizon ?? [0, 0, 0];
+  const ground: [number, number, number] = options.ground ?? [0, 0, 0];
+  const softness = options.softness ?? options.angularRadius * 0.5;
+  const sunIntensity = options.sunIntensity ?? 1;
+  const length = Math.hypot(...options.direction);
+  const [dx, dy, dz] = options.direction.map((value) => value / length) as [
+    number,
+    number,
+    number
+  ];
+  const cosOuter = Math.cos(options.angularRadius);
+  const cosInner = Math.cos(options.angularRadius - softness);
+  const data = new Float32Array(width * height * 4);
+
+  for (let y = 0; y < height; y += 1) {
+    const v = (y + 0.5) / height;
+    const elevation = v * Math.PI - Math.PI / 2;
+    const cosElevation = Math.cos(elevation);
+    const sinElevation = Math.sin(elevation);
+
+    for (let x = 0; x < width; x += 1) {
+      const u = (x + 0.5) / width;
+      const azimuth = u * Math.PI * 2 - Math.PI;
+      const directionX = cosElevation * Math.cos(azimuth);
+      const directionY = sinElevation;
+      const directionZ = cosElevation * Math.sin(azimuth);
+      const gradient =
+        directionY >= 0
+          ? mix(horizon, zenith, smoothstep(0, 1, directionY))
+          : mix(horizon, ground, smoothstep(0, 1, -directionY));
+      const cosAngle =
+        directionX * dx + directionY * dy + directionZ * dz;
+      const disk = smoothstep(cosOuter, cosInner, cosAngle) * sunIntensity;
+      const offset = (y * width + x) * 4;
+      data[offset] = gradient[0] + options.color[0] * disk;
+      data[offset + 1] = gradient[1] + options.color[1] * disk;
+      data[offset + 2] = gradient[2] + options.color[2] * disk;
+      data[offset + 3] = 1;
+    }
+  }
+
+  return { width, height, data, intensity: options.intensity ?? 1 };
 }
 
 function environmentOnlyScene(environment: BakeEnvironment, size = 4): BakeScene {
@@ -461,10 +528,12 @@ async function main(): Promise<void> {
       assert(next.stats.max > 0, "bake after cosine cancellation did not produce light");
     });
 
-    await checkAsync("keeps procedural sun occlusion consistent at H64 and H128", async () => {
-      const sun = generateProceduralSky(
-        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
-      );
+    await checkAsync("keeps sun occlusion consistent at H64 and H128", async () => {
+      const sun = sunEnvironment({
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
       for (const hemisphereSize of [64, 128]) {
         const openScene = environmentOnlyScene(sun, 2);
         const open = await harness!.bake(openScene, {
@@ -508,13 +577,17 @@ async function main(): Promise<void> {
       assert(errorMessage(error).includes("environment"), "error does not name the environment");
     });
 
-    await checkAsync("lights an up-facing surface with a procedural sun above the horizon", async () => {
-      const sunUp = generateProceduralSky(
-        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
-      );
-      const sunDown = generateProceduralSky(
-        proceduralSky({ sun: { direction: [0, -1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
-      );
+    await checkAsync("lights an up-facing surface with a sun above the horizon", async () => {
+      const sunUp = sunEnvironment({
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
+      const sunDown = sunEnvironment({
+        direction: [0, -1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
       const up = await harness!.bake(environmentOnlyScene(sunUp), {
         hemisphereSize: 32,
         bounces: 1,
@@ -525,32 +598,32 @@ async function main(): Promise<void> {
         bounces: 1,
         dilationPasses: 0
       });
-      assert(up.stats.max > 0.01, "procedural sun above the horizon produced no light");
+      assert(up.stats.max > 0.01, "sun above the horizon produced no light");
       assert(
         down.stats.max < up.stats.max * 0.05,
         `sun below the horizon leaked light: ${down.stats.max} vs ${up.stats.max}`
       );
-      assert(harness!.gl.getError() === harness!.gl.NO_ERROR, "GL error after procedural sun bake");
+      assert(harness!.gl.getError() === harness!.gl.NO_ERROR, "GL error after sun bake");
     });
 
-    await checkAsync("leaves only sky fill when the procedural sun is below the horizon", async () => {
-      const gradient: Partial<ProceduralSky> = {
-        zenith: [0.2, 0.3, 0.5],
-        horizon: [0.3, 0.3, 0.3],
-        ground: [0, 0, 0]
+    await checkAsync("leaves only sky fill when the sun is below the horizon", async () => {
+      const gradient = {
+        zenith: [0.2, 0.3, 0.5] as [number, number, number],
+        horizon: [0.3, 0.3, 0.3] as [number, number, number],
+        ground: [0, 0, 0] as [number, number, number]
       };
-      const sunUp = generateProceduralSky(
-        proceduralSky({
-          ...gradient,
-          sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 }
-        })
-      );
-      const sunDown = generateProceduralSky(
-        proceduralSky({
-          ...gradient,
-          sun: { direction: [0, -1, 0], color: [8, 8, 8], angularRadius: 0.2 }
-        })
-      );
+      const sunUp = sunEnvironment({
+        ...gradient,
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
+      const sunDown = sunEnvironment({
+        ...gradient,
+        direction: [0, -1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
       const up = await harness!.bake(environmentOnlyScene(sunUp), {
         hemisphereSize: 32,
         bounces: 1,
@@ -568,15 +641,18 @@ async function main(): Promise<void> {
       );
     });
 
-    await checkAsync("scales procedural sun light with sun intensity", async () => {
-      const low = generateProceduralSky(
-        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
-      );
-      const high = generateProceduralSky(
-        proceduralSky({
-          sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2, intensity: 2 }
-        })
-      );
+    await checkAsync("scales sun light with sun intensity", async () => {
+      const low = sunEnvironment({
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
+      const high = sunEnvironment({
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2,
+        sunIntensity: 2
+      });
       const lowResult = await harness!.bake(environmentOnlyScene(low), {
         hemisphereSize: 32,
         bounces: 1,
@@ -593,10 +669,12 @@ async function main(): Promise<void> {
       );
     });
 
-    await checkAsync("occludes the procedural sun behind black geometry", async () => {
-      const sunUp = generateProceduralSky(
-        proceduralSky({ sun: { direction: [0, 1, 0], color: [8, 8, 8], angularRadius: 0.2 } })
-      );
+    await checkAsync("occludes the sun behind black geometry", async () => {
+      const sunUp = sunEnvironment({
+        direction: [0, 1, 0],
+        color: [8, 8, 8],
+        angularRadius: 0.2
+      });
       const open = await harness!.bake(environmentOnlyScene(sunUp, 2), {
         hemisphereSize: 32,
         bounces: 1,
