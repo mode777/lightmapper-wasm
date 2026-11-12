@@ -33,7 +33,7 @@
 - [x] 6.1 Run the site gate from the repository root: `npm run check --prefix site`, `npm test --prefix site`, `npm run test:harness --prefix site`, `npm run test:smoke --prefix site`, `SITE_BASE=/lightmapper-wasm/ npm run build --prefix site` and `npm run build:check --prefix site` with `CHROME_SHELL_PATH` set. Verify: every suite is green and the build check reports three HDRI assets.
 - [x] 6.2 Run `npm run verify:remote` for the root, studio and site pipeline on the verification box; re-run the golden bake only if the diff unexpectedly touches the root package. Verify: the full pipeline passes with no change to the root wasm/dist layout, loader behavior or package consumption.
 - [x] 6.3 Run `npx @fission-ai/openspec@latest validate --all --strict` and `npx @fission-ai/openspec@latest status --change rework-outdoor-hdri-scenes`. Verify: validation is clean and every planning artifact is complete.
-- [ ] 6.4 Commit to `Main` with a concise imperative subject and push after 6.1–6.3 are green. Verify: `git status` is clean, the commit contains only this change's implementation and planning files, and `origin/Main` is fast-forwarded.
+- [x] 6.4 Commit to `Main` with a concise imperative subject and push after 6.1–6.3 are green. Verify: `git status` is clean, the commit contains only this change's implementation and planning files, and `origin/Main` is fast-forwarded.
 
 ## Workflow follow-up
 
