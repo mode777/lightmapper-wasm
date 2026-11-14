@@ -1,5 +1,5 @@
 import { LIGHTMAPPER_HEADER_URL } from "./chrome";
-import { SCENARIOS } from "./demos";
+import { SCENARIOS, sceneSummary } from "./demos";
 import { sectionInfo, SECTIONS } from "./demos/sections";
 import type { SceneDefinition, SceneSection } from "./demos/types";
 import { el } from "./dom";
@@ -123,7 +123,10 @@ export function createGallery(_route: Route): View {
         fact(String(SCENARIOS.length), "procedural scenarios"),
         fact("3", "views per scene: 3D, atlas, code"),
         fact("2", "wasm modules: lightmapper + xatlas"),
-        fact(String(SCENARIOS.reduce((sum, scene) => sum + scene.bake.bounces, 0)), "configured bounces")
+        fact(
+          String(SCENARIOS.reduce((sum, scene) => sum + sceneSummary(scene).bounces, 0)),
+          "configured bounces"
+        )
       )
     ),
     el(
@@ -160,6 +163,7 @@ function fact(value: string, label: string): HTMLElement {
 }
 
 function sceneCard(scenario: SceneDefinition): HTMLElement {
+  const { atlasSize, bounces } = sceneSummary(scenario);
   const thumb = thumbnailFor(scenario.meta.id);
   const fallback = el("div", { className: "card-fallback", textContent: scenario.meta.id });
   const preview = el("a", {
@@ -222,9 +226,9 @@ function sceneCard(scenario: SceneDefinition): HTMLElement {
       labels,
       el("p", {
         className: "faint",
-        textContent: `${scenario.bake.atlasSize}² atlas · ${scenario.bake.bounces} bounce${
-          scenario.bake.bounces === 1 ? "" : "s"
-        } · ${(scenario.bake.atlasSize * scenario.bake.atlasSize).toLocaleString("en-US")} texels`
+        textContent: `${atlasSize}² atlas · ${bounces} bounce${
+          bounces === 1 ? "" : "s"
+        } · ${(atlasSize * atlasSize).toLocaleString("en-US")} texels`
       })
     )
   );

@@ -838,6 +838,29 @@ input[type="range"] {
   min-height: 0;
 }
 
+.code-scroll {
+  min-height: 0;
+  overflow: auto;
+  background: #070a0f;
+}
+
+.code-block + .code-block {
+  border-top: 1px solid var(--line-soft);
+}
+
+.code-caption {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 16px;
+  background: #0a0e15;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--faint);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .code-toolbar {
   display: flex;
   align-items: center;
@@ -852,7 +875,7 @@ input[type="range"] {
 .code-view pre {
   margin: 0;
   padding: 16px;
-  overflow: auto;
+  overflow: visible;
   background: #070a0f;
   font-size: 0.78rem;
   line-height: 1.6;

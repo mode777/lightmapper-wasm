@@ -72,7 +72,9 @@ the forced capability/asset failure routes.
 
 ## Scene contract
 
-Each scenario is a `SceneDefinition` in `src/demos/<id>.ts`:
+Each scenario is a `SceneDefinition` in `src/demos/<id>.ts`. It returns a
+`lightmap-studio` `BakeInput`, so the module shown in the Code view is the
+studio's own input type:
 
 ```ts
 interface SceneDefinition {
@@ -85,36 +87,34 @@ interface SceneDefinition {
     background?: [number, number, number]; // linear
     camera?: { position: [number, number, number]; target: [number, number, number]; fov?: number };
   };
-  bake: {
-    atlasSize: number;
-    hemisphereSize: number; // power of two
-    bounces: number;
-    ambient: [number, number, number]; // linear
-    environment?: SceneEnvironment; // checked-in equirectangular HDRI
-    hemisphereWeight?: "uniform" | "cosine"; // default uniform
-    environmentBake?: {
-      prefilterRadius?: number; // HDRI bake blur radius in target texels
-    };
-    zNear?: number;
-    zFar?: number;
-    dilationPasses?: number;
-    smooth?: boolean;
-  };
+  environment?: { kind: "hdr"; url: string; intensity: number }; // site-local asset descriptor
   build(): SceneMesh[];
+  bake(environment?: EnvironmentInput): BakeInput;
 }
 ```
 
-`build()` returns world-space meshes with positions, indices and normals.
+`bake()` receives the decoded HDRI (or `undefined`) and returns
+`{ meshes, lighting, atlas, options }` unchanged for the studio. Scenes omit
+`quality`, so the studio's `preview` preset supplies the fields a scene leaves
+out; the page overrides `options.hemisphereSize` and `options.bounces` from its
+quality and bounce controls. `build()` stays for the three.js display and the
+scene tests: it returns world-space meshes with positions, indices and normals.
 `kind: "lit"` meshes also carry a linear albedo; `kind: "emissive"` meshes
-carry a linear HDR emissive color. The shared helpers in `src/demos/geometry.ts`
-emit split faces for hard edges (boxes, cylinder caps) and shared vertices for
-smooth surfaces (spheres, torus, cylinder sides). `src/demos/geometry.ts` and
-`src/demos/types.ts` are the only scene shared modules; keep them small because
-their source hashes invalidate every thumbnail.
+carry a linear HDR emissive color. `src/demos/studio-input.ts` splits them into
+the studio's `MeshInput` / `EmissiveMeshInput` arrays.
 
-`src/demos/index.ts` is the catalog. `src/demos/sources.ts` imports each scene
-module with Vite's `?raw` query so the Code view shows the exact source that
-produced the bake.
+The shared helpers in `src/demos/geometry.ts` emit split faces for hard edges
+(boxes, cylinder caps) and shared vertices for smooth surfaces (spheres, torus,
+cylinder sides). `src/demos/geometry.ts` and `src/demos/types.ts` are the only
+scene shared modules; keep them small because their source hashes invalidate
+every thumbnail.
+
+`src/demos/index.ts` is the catalog; it also exposes `sceneInput()` and
+`sceneSummary()`, which derive the gallery card's atlas size and bounce count
+from the same bake input the page uses. `src/demos/sources.ts` imports each
+scene module with Vite's `?raw` query and prepends the fixed usage header from
+`src/demos/example.ts`, so the Code view shows the studio call plus the exact
+input source.
 
 ## xatlas pipeline and the `[0,1)` clamp
 
@@ -260,7 +260,15 @@ Each route (`#/p/<id>`) has three tabs:
 
 - **3D** — the default; orbit/zoom the baked scene.
 - **Atlas** — the baked lightmap with the chart-colored UV layout.
-- **Code** — the exact scene module source with a copy action.
+- **Code** — the studio usage header plus the exact scene input source. Two
+  labeled blocks: `bake-example.ts` (create a studio, bake the input, read the
+  result) and `<id>.ts` (the scene's `BakeInput` producer). The copy action
+  copies both. The header is documentation, not a render input, so it is not
+  part of the thumbnail source hash.
+
+Changing the quality preset or bounce count only sets runtime overrides
+(`options.hemisphereSize`, `options.bounces`); the scene source shown in the
+Code view does not change.
 
 Switching tabs never re-bakes. `#/p/<id>?preview=1` hides the header, tabs,
 aside, meta bar and footer, fixes the stage to 16:10 and bakes at draft quality

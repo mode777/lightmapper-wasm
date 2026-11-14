@@ -1,3 +1,4 @@
+import type { BakeInput, EnvironmentInput } from "lightmap-studio";
 import {
   createBox,
   createCylinder,
@@ -10,6 +11,7 @@ import {
   type TransformOptions
 } from "./geometry";
 import type { GeometryData } from "./geometry";
+import { toStudioScene } from "./studio-input";
 import type { SceneDefinition, SceneMesh, Vec3 } from "./types";
 
 function lit(name: string, geometry: GeometryData, albedo: Vec3, transform: TransformOptions): SceneMesh {
@@ -27,49 +29,51 @@ export const aoStudio: SceneDefinition = {
     background: [0.015, 0.02, 0.03],
     camera: { position: [6.2, 4.3, 7.6], target: [0, 1.15, 0], fov: 42 }
   },
-  bake: {
-    atlasSize: 512,
-    hemisphereSize: 64,
-    bounces: 1,
-    ambient: [0.58, 0.61, 0.7],
-    zNear: 0.01,
-    zFar: 40,
-    dilationPasses: 8
-  },
-  build(): SceneMesh[] {
-    return [
-      lit("floor", createPlane(7.6, 7.6), [0.7, 0.7, 0.69], {}),
-      lit(
-        "back wall",
-        createQuad(7.6, 4.4),
-        [0.68, 0.69, 0.71],
-        { position: [0, 2.2, -3.5] }
-      ),
-      lit(
-        "left wall",
-        createQuad(7, 4.4),
-        [0.66, 0.68, 0.72],
-        { position: [-3.5, 2.2, 0], rotation: [0, Math.PI / 2, 0] }
-      ),
-      lit(
-        "sphere",
-        createSphere(0.75, 24, 16),
-        [0.86, 0.84, 0.8],
-        { position: [-1.05, 0.75, 0.25] }
-      ),
-      lit("box", createBox(1.15, 1.15, 1.15), [0.84, 0.82, 0.79], {
-        position: [1.1, 0.575, 0.6],
-        rotation: [0, 0.35, 0]
-      }),
-      lit("cylinder", createCylinder(0.42, 1.55, 24), [0.8, 0.81, 0.84], {
-        position: [0.05, 0.775, 1.35]
-      }),
-      lit(
-        "torus",
-        createTorus(0.52, 0.16, 32, 12),
-        [0.83, 0.8, 0.76],
-        { position: [0.9, 0.68, -1.55], rotation: [Math.PI / 2, 0, 0.25] }
-      )
-    ];
+  build: buildAoStudio,
+  bake(environment?: EnvironmentInput): BakeInput {
+    const { meshes, emitters } = toStudioScene(buildAoStudio());
+    return {
+      meshes,
+      lighting: { ambient: [0.58, 0.61, 0.7], environment, emitters },
+      atlas: { size: 512 },
+      options: { hemisphereSize: 64, bounces: 1, dilationPasses: 8, zNear: 0.01, zFar: 40 }
+    };
   }
 };
+
+function buildAoStudio(): SceneMesh[] {
+  return [
+    lit("floor", createPlane(7.6, 7.6), [0.7, 0.7, 0.69], {}),
+    lit(
+      "back wall",
+      createQuad(7.6, 4.4),
+      [0.68, 0.69, 0.71],
+      { position: [0, 2.2, -3.5] }
+    ),
+    lit(
+      "left wall",
+      createQuad(7, 4.4),
+      [0.66, 0.68, 0.72],
+      { position: [-3.5, 2.2, 0], rotation: [0, Math.PI / 2, 0] }
+    ),
+    lit(
+      "sphere",
+      createSphere(0.75, 24, 16),
+      [0.86, 0.84, 0.8],
+      { position: [-1.05, 0.75, 0.25] }
+    ),
+    lit("box", createBox(1.15, 1.15, 1.15), [0.84, 0.82, 0.79], {
+      position: [1.1, 0.575, 0.6],
+      rotation: [0, 0.35, 0]
+    }),
+    lit("cylinder", createCylinder(0.42, 1.55, 24), [0.8, 0.81, 0.84], {
+      position: [0.05, 0.775, 1.35]
+    }),
+    lit(
+      "torus",
+      createTorus(0.52, 0.16, 32, 12),
+      [0.83, 0.8, 0.76],
+      { position: [0.9, 0.68, -1.55], rotation: [Math.PI / 2, 0, 0.25] }
+    )
+  ];
+}

@@ -8,7 +8,6 @@ import {
   type BakeResult,
   type EmissiveMeshInput,
   type EmissiveObject,
-  type MeshInput,
   type Studio,
   type StudioProgress,
   type UnwrappedObject,
@@ -18,8 +17,9 @@ import { chartColor } from "./atlas/stats";
 import { QUALITY_PRESETS, isQuality, PREVIEW_VERSION, type Quality } from "./demos/coverage";
 import { loadHdrEnvironment, type LoadedEnvironment } from "./environment/hdr";
 import { sectionInfo } from "./demos/sections";
-import { sourceFor } from "./demos/sources";
-import type { SceneDefinition, SceneMesh } from "./demos/types";
+import { codeFor, sourceFor } from "./demos/sources";
+import { USAGE_HEADER, USAGE_HEADER_FILE } from "./demos/example";
+import type { SceneDefinition } from "./demos/types";
 import { ThreeDisplay } from "./display";
 import { downloadBlob, el, formatNumber } from "./dom";
 import type { Route } from "./router";
@@ -57,7 +57,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
   const forcedFailure = route.query.get("fail") as FailureMode | null;
   const initialQuality: Quality = preview ? "draft" : "standard";
   let quality: Quality = initialQuality;
-  let bounces = preview ? 1 : scenario.bake.bounces;
+  let bounces = preview ? 1 : (scenario.bake().options?.bounces ?? 1);
   let tab: Tab = "3d";
   let disposed = false;
   let unwrapped: UnwrappedScene | null = null;
@@ -83,6 +83,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
   const chartCanvas = el("canvas");
   const atlasInfo = el("p", { className: "thumbnail-note", textContent: "" });
   const codeElement = el("code");
+  const headerElement = el("code");
   const copyButton = el("button", { className: "button small", type: "button", textContent: "Copy" });
   const errorTitle = el("strong");
   const errorMessage = el("p");
@@ -183,8 +184,28 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       el(
         "div",
         { className: "code-view" },
-        el("div", { className: "code-toolbar" }, el("span", { textContent: `${scenario.meta.id}.ts` }), copyButton),
-        el("pre", {}, codeElement)
+        el(
+          "div",
+          { className: "code-toolbar" },
+          el("span", { textContent: "lightmap-studio" }),
+          copyButton
+        ),
+        el(
+          "div",
+          { className: "code-scroll" },
+          el(
+            "div",
+            { className: "code-block", dataset: { codeBlock: "header" } },
+            el("div", { className: "code-caption", textContent: USAGE_HEADER_FILE }),
+            el("pre", {}, headerElement)
+          ),
+          el(
+            "div",
+            { className: "code-block", dataset: { codeBlock: "scene" } },
+            el("div", { className: "code-caption", textContent: `${scenario.meta.id}.ts` }),
+            el("pre", {}, codeElement)
+          )
+        )
       )
     )
   );
@@ -303,7 +324,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
   });
   bouncesInput.addEventListener("change", () => {
     const value = Number.parseInt(bouncesInput.value, 10);
-    bounces = Number.isFinite(value) ? Math.min(6, Math.max(1, value)) : scenario.bake.bounces;
+    bounces = Number.isFinite(value) ? Math.min(6, Math.max(1, value)) : bakeInput?.options?.bounces ?? 1;
     bouncesInput.value = String(bounces);
     status.textContent = "Bounce count changed; bake to apply.";
   });
@@ -349,12 +370,13 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       codeElement.textContent = `Source for ${scenario.meta.id} is unavailable.`;
       return;
     }
+    headerElement.innerHTML = hljs.highlight(USAGE_HEADER, { language: "typescript" }).value;
     codeElement.innerHTML = hljs.highlight(source, { language: "typescript" }).value;
     codeElement.dataset.rendered = "1";
   }
 
   async function copySource(): Promise<void> {
-    const source = sourceFor(scenario.meta.id) ?? "";
+    const source = codeFor(scenario.meta.id) ?? "";
     try {
       await navigator.clipboard.writeText(source);
     } catch {
@@ -590,16 +612,26 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       }
     }
 
-    const meshes = scenario.build();
-    const litMeshes = meshes.filter((mesh) => mesh.kind === "lit").map(toMeshInput);
-    const emissiveMeshes = meshes
-      .filter((mesh) => mesh.kind === "emissive")
-      .map(toEmissiveInput);
+    let loadedEnvironment: LoadedEnvironment | null = null;
+    const environmentDescriptor = scenario.environment;
+    if (environmentDescriptor) {
+      try {
+        loadedEnvironment = await loadHdrEnvironment(environmentDescriptor.url, {
+          intensity: environmentDescriptor.intensity
+        });
+      } catch (error) {
+        if (!disposed) showFailure("hdri", error);
+        return;
+      }
+    }
+    if (disposed) return;
 
-    const previewAtlasCap = PREVIEW_ATLAS_CAP;
-    const atlasSize = preview
-      ? Math.min(scenario.bake.atlasSize, previewAtlasCap)
-      : scenario.bake.atlasSize;
+    const sceneInput = scenario.bake(loadedEnvironment?.environment);
+    const requestedAtlas = sceneInput.atlas?.size ?? PREVIEW_ATLAS_CAP;
+    const atlasSize = preview ? Math.min(requestedAtlas, PREVIEW_ATLAS_CAP) : requestedAtlas;
+    const bakeSpec: BakeInput = { ...sceneInput, atlas: { size: atlasSize } };
+    const litMeshes = bakeSpec.meshes;
+    const emitters = bakeSpec.lighting?.emitters ?? [];
 
     try {
       studio = await createStudio({
@@ -621,31 +653,16 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
     }
     if (disposed) return;
 
-    let loadedEnvironment: LoadedEnvironment | null = null;
-    const environmentDescriptor = scenario.bake.environment;
-    const environmentBake = scenario.bake.environmentBake;
-    if (environmentDescriptor) {
-      try {
-        loadedEnvironment = await loadHdrEnvironment(environmentDescriptor.url, {
-          intensity: environmentDescriptor.intensity
-        });
-      } catch (error) {
-        if (!disposed) showFailure("hdri", error);
-        return;
-      }
-    }
-    if (disposed) return;
-
     const displayScene: UnwrappedScene = {
       litObjects: unwrapped.litObjects,
-      emissiveObjects: emissiveMeshes.map(toEmissiveObject),
+      emissiveObjects: emitters.map(toEmissiveObject),
       atlas: unwrapped.atlas
     };
 
     updateBadges();
     stats.atlas.textContent = `${unwrapped.atlas.width}×${unwrapped.atlas.height}`;
     stats.charts.textContent = String(unwrapped.atlas.chartCount);
-    stats.objects.textContent = String(litMeshes.length + emissiveMeshes.length);
+    stats.objects.textContent = String(litMeshes.length + emitters.length);
 
     try {
       display = new ThreeDisplay(viewportHost, {
@@ -667,34 +684,7 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       return;
     }
 
-    bakeInput = {
-      meshes: litMeshes,
-      lighting: {
-        ambient: scenario.bake.ambient,
-        environment: loadedEnvironment?.environment,
-        emitters: emissiveMeshes
-      },
-      atlas: { size: atlasSize },
-      quality: "preview",
-      options: {
-        hemisphereSize: QUALITY_PRESETS[quality].hemisphereSize,
-        bounces,
-        dilationPasses: scenario.bake.dilationPasses,
-        smooth: scenario.bake.smooth ?? true,
-        smoothPasses: scenario.bake.smoothPasses,
-        interpolationPasses: scenario.bake.interpolationPasses,
-        interpolationThreshold: scenario.bake.interpolationThreshold,
-        zNear: scenario.bake.zNear,
-        zFar: scenario.bake.zFar,
-        hemisphereWeight: scenario.bake.hemisphereWeight,
-        environmentPrefilter:
-          environmentDescriptor === undefined
-            ? false
-            : environmentBake?.prefilterRadius !== undefined
-              ? { radius: environmentBake.prefilterRadius }
-              : true
-      }
-    };
+    bakeInput = bakeSpec;
     setBaking(false);
     status.textContent = "Ready to bake.";
     updateBadges();
@@ -718,27 +708,6 @@ export function createDemoPage(scenario: SceneDefinition, route: Route): View {
       studio = null;
       delete window.__showcase;
     }
-  };
-}
-
-function toMeshInput(mesh: SceneMesh): MeshInput {
-  if (!mesh.normals) throw new Error(`${mesh.name}: lit mesh needs normals`);
-  return {
-    name: mesh.name,
-    positions: mesh.positions,
-    normals: mesh.normals,
-    indices: mesh.indices,
-    albedo: mesh.albedo
-  };
-}
-
-function toEmissiveInput(mesh: SceneMesh): EmissiveMeshInput {
-  return {
-    name: mesh.name,
-    positions: mesh.positions,
-    normals: mesh.normals ?? new Float32Array(mesh.positions.length),
-    indices: mesh.indices,
-    emissive: mesh.emissive ?? [1, 1, 1]
   };
 }
 

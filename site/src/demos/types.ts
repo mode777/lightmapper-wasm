@@ -1,9 +1,10 @@
-import type { HemisphereWeight } from "lightmap-studio";
+import type { BakeInput, EnvironmentInput } from "lightmap-studio";
 
 export type SceneSection = "ambient" | "environment" | "gi" | "emissive" | "multi-object";
 
 export type Vec3 = [number, number, number];
 
+/** Site-local asset descriptor; the studio receives the decoded environment. */
 export interface HdrSceneEnvironment {
   kind: "hdr";
   /** Vite-resolved local `.hdr` URL. */
@@ -11,8 +12,6 @@ export interface HdrSceneEnvironment {
   /** Linear radiance multiplier used by the bake and the display background. */
   intensity: number;
 }
-
-export type SceneEnvironment = HdrSceneEnvironment;
 
 export interface SceneCamera {
   position: Vec3;
@@ -31,37 +30,6 @@ export interface SceneMeta {
   camera?: SceneCamera;
 }
 
-export interface EnvironmentBakeOptions {
-  /** HDRI Gaussian radius in target texels for the prefiltered bake copy. */
-  prefilterRadius?: number;
-}
-
-export interface BakePreset {
-  /** Square atlas size in texels. */
-  atlasSize: number;
-  /** Hemisphere render resolution; must be a power of two. */
-  hemisphereSize: number;
-  bounces: number;
-  /** Linear ambient/sky color passed to lmCreate. */
-  ambient: Vec3;
-  /** Optional equirectangular HDRI used as the bake skybox and display background. */
-  environment?: SceneEnvironment;
-  /** Per-scene hemisphere weighting; defaults to uniform. */
-  hemisphereWeight?: HemisphereWeight;
-  /** Bake-only environment variants that do not change the display source. */
-  environmentBake?: EnvironmentBakeOptions;
-  zNear?: number;
-  zFar?: number;
-  dilationPasses?: number;
-  smooth?: boolean;
-  /** Number of box-smoothing passes after each bounce; defaults to 1. */
-  smoothPasses?: number;
-  /** Hierarchical interpolation passes passed to lmCreate (0-8). */
-  interpolationPasses?: number;
-  /** Absolute radiance error below which lmCreate interpolates. */
-  interpolationThreshold?: number;
-}
-
 export interface SceneMesh {
   kind: "lit" | "emissive";
   name: string;
@@ -76,8 +44,11 @@ export interface SceneMesh {
 
 export interface SceneDefinition {
   meta: SceneMeta;
-  bake: BakePreset;
+  /** Optional checked-in HDRI that lights the bake and the display background. */
+  environment?: HdrSceneEnvironment;
   build(): SceneMesh[];
+  /** The scene as a `lightmap-studio` bake input. */
+  bake(environment?: EnvironmentInput): BakeInput;
 }
 
 export function isLitMesh(mesh: SceneMesh): boolean {

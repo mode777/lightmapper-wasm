@@ -29,7 +29,9 @@ context: |
   the npm tarball and adds no runtime dependency. It has seven scenarios
   (`ao-studio`, `cornell-box`, `emissive-alcove`, `tabletop-atlas`,
   `hdri-studio`, `hdri-outdoor`, `hdri-dusk`) and a three.js display
-  layer. The reusable unwrap/bake pipeline is published as the standalone
+  layer. Each scenario module returns a `lightmap-studio` `BakeInput`, and the
+  Code view shows a fixed studio usage header plus that exact input source
+  (AD-029). The reusable unwrap/bake pipeline is published as the standalone
   `lightmap-studio` package (AD-025/AD-026) and the site installs
   `lightmap-studio@^0.1.0` from the npm registry (AD-027); the repository has
   no local studio copy, and the site keeps `lightmapper-wasm: file:..` as its

@@ -152,4 +152,10 @@ describe("thumbnail manifest", () => {
     expect(gallery).toContain('addEventListener("error"');
     expect(styles).toMatch(/\.card-fallback\s*\{/);
   });
+
+  it("keeps the usage header out of the thumbnail source hash", () => {
+    expect(SHARED_FILES).not.toContain("example.ts");
+    expect(SHARED_SOURCE_FILES).not.toContain("example.ts");
+    expect(sourceFilesFor("ao-studio")).not.toContain("example.ts");
+  });
 });

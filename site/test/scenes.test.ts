@@ -12,7 +12,8 @@ import {
 } from "../src/demos/sampling";
 
 function assertPrefilteredBudget(scenario: typeof hdriOutdoor, label: string): void {
-  const radius = scenario.bake.environmentBake?.prefilterRadius;
+  const prefilter = scenario.bake().options?.environmentPrefilter;
+  const radius = typeof prefilter === "object" ? prefilter.radius : undefined;
   expect(radius).toBeGreaterThan(2);
   const effectiveDiameter = (radius ?? 2) * 2 * (Math.PI / 64);
   expect(sunTexels(effectiveDiameter, 64)).toBeGreaterThanOrEqual(
@@ -48,9 +49,9 @@ describe("scene catalog validity", () => {
     const result = validateScene(hdriStudio);
     expect(result.litCount).toBeGreaterThan(0);
     expect(result.emissiveCount).toBe(0);
-    expect(hdriStudio.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriStudio.bake().lighting?.ambient).toEqual([0, 0, 0]);
     expect(hdriStudio.meta.sections).toEqual(["environment"]);
-    const studioEnvironment = hdriStudio.bake.environment;
+    const studioEnvironment = hdriStudio.environment;
     expect(studioEnvironment?.kind).toBe("hdr");
     if (studioEnvironment?.kind !== "hdr") throw new Error("hdri-studio needs an HDRI environment");
     expect(studioEnvironment.url).toContain("studio_small_09_1k.hdr");
@@ -61,9 +62,9 @@ describe("scene catalog validity", () => {
     const result = validateScene(hdriOutdoor);
     expect(result.litCount).toBeGreaterThan(0);
     expect(result.emissiveCount).toBe(0);
-    expect(hdriOutdoor.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriOutdoor.bake().lighting?.ambient).toEqual([0, 0, 0]);
     expect(hdriOutdoor.meta.sections).toEqual(["environment"]);
-    const outdoorEnvironment = hdriOutdoor.bake.environment;
+    const outdoorEnvironment = hdriOutdoor.environment;
     expect(outdoorEnvironment?.kind).toBe("hdr");
     if (outdoorEnvironment?.kind !== "hdr") {
       throw new Error("hdri-outdoor needs an HDRI environment");
@@ -79,9 +80,9 @@ describe("scene catalog validity", () => {
     const result = validateScene(hdriDusk);
     expect(result.litCount).toBe(8);
     expect(result.emissiveCount).toBe(0);
-    expect(hdriDusk.bake.ambient).toEqual([0, 0, 0]);
+    expect(hdriDusk.bake().lighting?.ambient).toEqual([0, 0, 0]);
     expect(hdriDusk.meta.sections).toEqual(["environment"]);
-    const duskEnvironment = hdriDusk.bake.environment;
+    const duskEnvironment = hdriDusk.environment;
     expect(duskEnvironment?.kind).toBe("hdr");
     if (duskEnvironment?.kind !== "hdr") {
       throw new Error("hdri-dusk needs an HDRI environment");
@@ -100,19 +101,20 @@ describe("scene catalog validity", () => {
       if (scenario.meta.id === "hdri-outdoor" || scenario.meta.id === "hdri-dusk") {
         continue;
       }
-      expect(scenario.bake.hemisphereWeight, scenario.meta.id).toBeUndefined();
-      expect(scenario.bake.environmentBake, scenario.meta.id).toBeUndefined();
+      expect(scenario.bake().options?.hemisphereWeight, scenario.meta.id).toBeUndefined();
+      const prefilter = scenario.bake().options?.environmentPrefilter;
+      expect(typeof prefilter === "object" ? prefilter.radius : undefined, scenario.meta.id).toBeUndefined();
     }
-    expect(hdriStudio.bake.hemisphereWeight).toBeUndefined();
+    expect(hdriStudio.bake().options?.hemisphereWeight).toBeUndefined();
   });
 
   it("uses twelve-pass smoothing and 1024² environment atlases", () => {
-    expect(hdriDusk.bake.smoothPasses).toBe(12);
-    expect(hdriOutdoor.bake.smoothPasses).toBe(12);
-    expect(hdriStudio.bake.smoothPasses).toBe(12);
-    expect(hdriDusk.bake.atlasSize).toBe(1024);
-    expect(hdriOutdoor.bake.atlasSize).toBe(1024);
-    expect(hdriStudio.bake.atlasSize).toBe(1024);
+    expect(hdriDusk.bake().options?.smoothPasses).toBe(12);
+    expect(hdriOutdoor.bake().options?.smoothPasses).toBe(12);
+    expect(hdriStudio.bake().options?.smoothPasses).toBe(12);
+    expect(hdriDusk.bake().atlas?.size).toBe(1024);
+    expect(hdriOutdoor.bake().atlas?.size).toBe(1024);
+    expect(hdriStudio.bake().atlas?.size).toBe(1024);
   });
 
   it("fails the sampling budget with the computed coverage", () => {

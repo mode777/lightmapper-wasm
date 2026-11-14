@@ -183,15 +183,39 @@ async function checkPreviewBake(browser, base, id, results) {
 
     const bakesBefore = state.showcase?.bakes;
     await page.evaluate(() => document.querySelector('[data-tab="code"]')?.click());
-    await page.waitForFunction(() => document.querySelector(".code-view code")?.textContent?.includes("export const"), {
-      timeout: 30_000
-    });
-    const sourceMatches = await page.evaluate(async (scenarioId) => {
+    await page.waitForFunction(
+      () => document.querySelector('[data-code-block="scene"] code')?.textContent?.includes("export const"),
+      { timeout: 30_000 }
+    );
+    const codeView = await page.evaluate(async (scenarioId) => {
       const module = await import("/src/demos/sources.ts");
-      const code = document.querySelector(".code-view code")?.textContent ?? "";
-      return code === module.SCENE_SOURCES[scenarioId];
+      const header = document.querySelector('[data-code-block="header"] code')?.textContent ?? "";
+      const scene = document.querySelector('[data-code-block="scene"] code')?.textContent ?? "";
+      return { rendered: `${header}\n\n${scene}`, expected: module.codeFor(scenarioId) };
     }, id);
-    results.push(check(`${id} code view matches sources.ts`, sourceMatches));
+    results.push(check(`${id} code view matches codeFor(id)`, codeView.rendered === codeView.expected));
+    results.push(
+      check(
+        `${id} code view header shows the studio calls`,
+        codeView.rendered.includes("createStudio(") && codeView.rendered.includes(".bake(")
+      )
+    );
+
+    const copyMatches = await page.evaluate(async (expected) => {
+      document.querySelector(".code-toolbar .button")?.click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const copied = await (navigator.clipboard?.readText?.() ?? Promise.resolve(null)).catch(
+        () => null
+      );
+      return { copied, labeled: document.querySelector(".code-toolbar .button")?.textContent === "Copied", expected };
+    }, codeView.expected);
+    results.push(
+      check(
+        `${id} code copy includes the header`,
+        copyMatches.copied === null ? copyMatches.labeled : copyMatches.copied === copyMatches.expected,
+        copyMatches.copied === null ? "clipboard unreadable; checked label" : ""
+      )
+    );
 
     await page.evaluate(() => document.querySelector('[data-tab="atlas"]')?.click());
     const atlas = await page.evaluate(() => {

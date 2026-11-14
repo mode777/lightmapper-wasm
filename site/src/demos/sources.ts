@@ -5,6 +5,7 @@ import hdriDuskSource from "./hdri-dusk.ts?raw";
 import hdriOutdoorSource from "./hdri-outdoor.ts?raw";
 import hdriStudioSource from "./hdri-studio.ts?raw";
 import tabletopAtlasSource from "./tabletop-atlas.ts?raw";
+import { USAGE_HEADER } from "./example";
 
 /** Exact scene module source shown by the Code view. */
 export const SCENE_SOURCES: Readonly<Record<string, string>> = {
@@ -19,4 +20,10 @@ export const SCENE_SOURCES: Readonly<Record<string, string>> = {
 
 export function sourceFor(id: string): string | undefined {
   return SCENE_SOURCES[id];
+}
+
+/** Header plus exact scene source, as rendered by the Code view. */
+export function codeFor(id: string): string {
+  const source = SCENE_SOURCES[id];
+  return source === undefined ? "" : `${USAGE_HEADER}\n\n${source}`;
 }

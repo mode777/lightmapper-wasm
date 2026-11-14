@@ -445,6 +445,7 @@ are the intended kebab-case change names.
 | 15 | `bootstrap-lightmap-studio` (AD-025/AD-026) | new `lightmap-studio` repo | 14 | Implemented (`lightmap-studio@0.1.0`) | Standalone package with build, types, loader, docs, tests and npm publish |
 | 16 | `consume-lightmap-studio` (AD-027) | this repo | 15 | Implemented (`lightmap-studio@^0.1.0` from npm) | Remove the local studio and consume the npm package from the site |
 | 17 | `rework-outdoor-hdri-scenes` (AD-028) | this repo | 10, 11, 13 | Implemented (three Pure Sky HDRIs + dusk scene) | Remove the synthetic scene, swap in Pure Sky HDRIs and add a dusk HDRI scene |
+| 18 | `showcase-studio-code-examples` (AD-029) | this repo | 16 | Implemented (scene input + usage header in the Code view) | Make every scenario a `lightmap-studio` `BakeInput` and show it with a fixed studio usage header |
 
 Changes 1–3 are upstream C work: this repo tracks them, includes the
 `[lightmapper]` tasks and bumps the submodule to the commit that contains the

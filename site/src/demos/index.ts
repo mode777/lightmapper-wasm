@@ -1,3 +1,4 @@
+import type { BakeInput } from "lightmap-studio";
 import { aoStudio } from "./ao-studio";
 import { cornellBox } from "./cornell-box";
 import { emissiveAlcove } from "./emissive-alcove";
@@ -24,6 +25,23 @@ export const SCENARIO_BY_ID: ReadonlyMap<string, SceneDefinition> = new Map(
 
 export function scenarioById(id: string | undefined): SceneDefinition | undefined {
   return id ? SCENARIO_BY_ID.get(id) : undefined;
+}
+
+const BAKE_INPUTS = new WeakMap<SceneDefinition, BakeInput>();
+
+/** The scene's bake input without a decoded environment, built once per scene. */
+export function sceneInput(scenario: SceneDefinition): BakeInput {
+  const cached = BAKE_INPUTS.get(scenario);
+  if (cached) return cached;
+  const input = scenario.bake();
+  BAKE_INPUTS.set(scenario, input);
+  return input;
+}
+
+/** Atlas size and bounce count shown on the gallery card and summary facts. */
+export function sceneSummary(scenario: SceneDefinition): { atlasSize: number; bounces: number } {
+  const input = sceneInput(scenario);
+  return { atlasSize: input.atlas?.size ?? 0, bounces: input.options?.bounces ?? 1 };
 }
 
 export interface SceneValidation {

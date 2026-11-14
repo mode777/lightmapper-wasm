@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SCENARIOS, scenarioById } from "../src/demos";
+import { SCENARIOS, scenarioById, sceneInput, sceneSummary } from "../src/demos";
 import { EXPECTED_SCENARIO_IDS, sectionCoverage } from "../src/demos/coverage";
 import { SECTIONS, isSceneSection } from "../src/demos/sections";
 import { SCENE_SOURCES } from "../src/demos/sources";
@@ -49,6 +49,19 @@ describe("scenario catalog", () => {
     ).map((scenario) => scenario.meta.id);
     expect(environment).toEqual(["hdri-studio", "hdri-outdoor", "hdri-dusk"]);
     expect(sectionCoverage(SCENARIOS).environment).toBe(3);
+  });
+
+  it("derives gallery metadata from the scene bake input", () => {
+    let total = 0;
+    for (const scenario of SCENARIOS) {
+      const input = sceneInput(scenario);
+      const summary = sceneSummary(scenario);
+      expect(summary.atlasSize, scenario.meta.id).toBe(input.atlas?.size);
+      expect(summary.bounces, scenario.meta.id).toBe(input.options?.bounces ?? 1);
+      expect(summary.atlasSize).toBeGreaterThanOrEqual(256);
+      total += summary.bounces;
+    }
+    expect(total).toBe(SCENARIOS.reduce((sum, s) => sum + (s.bake().options?.bounces ?? 1), 0));
   });
 
   it("has an exact raw source entry for every scenario", () => {

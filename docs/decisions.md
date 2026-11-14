@@ -573,3 +573,36 @@ weighting and six-texel outdoor sampling budget still apply, and AD-020 is not
 superseded. This extends AD-017. There is no `lightmapper.h`, wasm, loader,
 package-entry or studio release change; the site build carries three checked-in
 HDRIs.
+
+## AD-029 — The showcase Code view teaches the studio input contract {#ad-029}
+
+**Context.** AD-015 defined the showcase as a consumer of the tested artifact
+and AD-027 moved its bake pipeline into the published `lightmap-studio`
+package. The scenario pages kept a Code view that rendered
+`site/src/demos/<id>.ts` verbatim. After the extraction those files contained no
+package code at all: they declared a private `SceneDefinition`/`BakePreset`
+dialect, called site-local geometry helpers and imported neither package, while
+the `createStudio`/`bake` calls stayed inside `demo-page.ts`. The site's most
+visible and most copy-encouraged code sample therefore demonstrated a vocabulary
+that exists only in this repository, in a form that could not be pasted into a
+consumer.
+
+**Decision.** Make the Code view a `lightmap-studio` example. Each scene module
+returns the studio's `BakeInput` from `bake(environment?)` instead of a private
+bake preset, so its mesh, lighting, atlas and option values use the published
+type and field names. The Code view renders a fixed usage header
+(`createStudio`, `studio.bake`, `result.lightmap`, `loadEnvironment`) above the
+exact scene source, in two labeled blocks, and the copy action copies both.
+Runtime quality and bounce controls stay explicit `options` overrides and are
+not folded into the displayed input. Gallery atlas and bounce labels derive from
+the same bake input rather than a parallel copy.
+
+**Consequences.** The private `BakePreset`/`EnvironmentBakeOptions` dialect is
+removed and the HDRI asset descriptor becomes a scene-level field, because the
+studio accepts only decoded linear data. The usage header is documentation, not
+a render input, so it stays out of the thumbnail source hash; scene edits still
+require a recapture. The bake result is unchanged, and the site continues to be
+a private consumer deployed from the tested artifact. This implements AD-027 and
+extends AD-015 without superseding either. It does not change the wrapper, the
+wasm artifact, the studio package or the site's branding, and it deliberately
+leaves a low-level `lightmapper-wasm` example out of the Code view.

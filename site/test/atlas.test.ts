@@ -14,20 +14,11 @@ import type { SceneDefinition } from "../src/demos/types";
 let studio: Studio;
 
 function litInputs(scenario: SceneDefinition): MeshInput[] {
-  return scenario
-    .build()
-    .filter((mesh) => mesh.kind === "lit")
-    .map((mesh) => ({
-      name: mesh.name,
-      positions: mesh.positions,
-      normals: mesh.normals!,
-      indices: mesh.indices,
-      albedo: mesh.albedo
-    }));
+  return scenario.bake().meshes;
 }
 
 function unwrapScenario(scenario: SceneDefinition) {
-  return studio.unwrap(litInputs(scenario), { size: scenario.bake.atlasSize });
+  return studio.unwrap(litInputs(scenario), { size: scenario.bake().atlas?.size ?? 1024 });
 }
 
 function expectSafeUvs(object: UnwrappedObject): void {

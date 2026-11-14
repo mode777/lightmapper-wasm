@@ -229,7 +229,9 @@ are soft area-light shadows, not a crisp parallel sun, while the dusk scene has
 no visible sun and reads as soft omni-directional fill. Every scenario
 consumes the published `lightmap-studio` package: it unwraps its lit meshes
 through xatlas, bakes with the studio harness and displays the result with
-three.js. The gallery credits the underlying
+three.js. Each scenario module builds the scene's `lightmap-studio` `BakeInput`,
+and the Code view shows the studio call plus that exact input source. The
+gallery credits the underlying
 [`lightmapper.h`](https://github.com/ands/lightmapper) by Andreas Mantler, and
 global navigation does not feature an individual scenario; the Cornell box is
 one catalog example.
